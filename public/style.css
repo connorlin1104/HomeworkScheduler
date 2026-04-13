@@ -117,6 +117,41 @@ body {
 }
 .btn.btn-icon:hover { background: rgba(255,255,255,.1); color: #fff; }
 
+/* Larger settings gear button */
+.btn.btn-icon--lg {
+  padding: 10px;
+  color: #cbd5e1;
+}
+.btn.btn-icon--lg svg { width: 22px; height: 22px; }
+.btn.btn-icon--lg:hover { background: rgba(255,255,255,.15); color: #fff; }
+
+/* Undo / Redo buttons */
+.undo-redo-group {
+  display: flex;
+  gap: 2px;
+  background: rgba(255,255,255,.07);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+.btn-icon-header {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  background: transparent;
+  color: #94a3b8;
+  font-family: inherit;
+  transition: background var(--t), color var(--t);
+}
+.btn-icon-header:hover:not(:disabled) { background: rgba(255,255,255,.12); color: #fff; }
+.btn-icon-header:disabled { opacity: .3; cursor: not-allowed; }
+
 /* =============================================================================
    MAIN CONTENT
    ============================================================================= */
@@ -208,8 +243,8 @@ body {
 .hw-item:last-child { border-bottom: none; }
 .hw-item:hover { background: #f8fafc; }
 
-.hw-item--done { opacity: .5; }
-.hw-item--done .hw-desc { text-decoration: line-through; }
+.hw-item--done { opacity: .65; background: #f8fafc; }
+.hw-item--done .hw-desc { text-decoration: line-through; color: var(--text-muted); }
 
 /* Custom checkbox — inherits the class color */
 .hw-check-label {
@@ -441,6 +476,13 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(59,130,246,.15);
 }
 textarea { min-height: 72px; resize: vertical; }
+
+/* Larger, more prominent deadline picker */
+#hw-deadline {
+  padding: 11px 14px;
+  font-size: 1rem;
+  cursor: pointer;
+}
 
 .form-actions {
   display: flex;
