@@ -93,6 +93,14 @@ function getNextAvailableColor(tabId) {
   return PRESET_COLORS.find(c => !used.has(c)) ?? PRESET_COLORS[0];
 }
 
+// Basic singularizer: "Clubs" → "Club", "Activities" → "Activity", "Classes" → "Class"
+function singularize(name) {
+  if (name.endsWith('ies')) return name.slice(0, -3) + 'y';
+  if (/[sx]es$/.test(name) || name.endsWith('ches') || name.endsWith('shes')) return name.slice(0, -2);
+  if (name.endsWith('s') && !name.endsWith('ss')) return name.slice(0, -1);
+  return name;
+}
+
 /* =============================================================================
    UTILITIES
    ============================================================================= */
@@ -533,8 +541,9 @@ function populateSettingsTabSelect(selectValue) {
 }
 
 function switchSettingsPage(page) {
-  document.getElementById('settings-page-tabs').classList.toggle('hidden', page !== 'tabs');
-  document.getElementById('settings-page-classes').classList.toggle('hidden', page !== 'classes');
+  ['tabs', 'classes', 'help'].forEach(p => {
+    document.getElementById(`settings-page-${p}`).classList.toggle('hidden', page !== p);
+  });
   document.querySelectorAll('.settings-nav-item').forEach(btn => {
     btn.classList.toggle('settings-nav--active', btn.dataset.page === page);
   });
@@ -547,9 +556,9 @@ function updateSettingsLabels() {
   const name   = tab ? tab.name : 'Classes';
   const editId = document.getElementById('edit-class-id').value;
   if (!editId) {
-    const isDefault = tabId === 'classes';
-    document.getElementById('class-form-title').textContent  = isDefault ? 'Add New Class'  : `Add New ${name} Group`;
-    document.getElementById('class-form-submit').textContent = isDefault ? 'Add Class'       : `Add to ${name}`;
+    const singular = singularize(name);
+    document.getElementById('class-form-title').textContent  = `Add New ${singular}`;
+    document.getElementById('class-form-submit').textContent = `Add ${singular}`;
   }
 }
 
@@ -896,12 +905,26 @@ function wireEvents() {
     if (addBtn)  openHwModal(addBtn.dataset.classId);
   });
 
+  // Help section modals
+  function openModal(id)  { document.getElementById(id).classList.add('modal--open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('modal--open'); }
+
+  document.getElementById('whats-new-btn').addEventListener('click',  () => openModal('whats-new-modal'));
+  document.getElementById('privacy-btn').addEventListener('click',     () => openModal('privacy-modal'));
+  document.getElementById('close-whats-new').addEventListener('click', () => closeModal('whats-new-modal'));
+  document.getElementById('close-privacy').addEventListener('click',   () => closeModal('privacy-modal'));
+  document.getElementById('whats-new-backdrop').addEventListener('click', () => closeModal('whats-new-modal'));
+  document.getElementById('privacy-backdrop').addEventListener('click',   () => closeModal('privacy-modal'));
+
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
     const mod = e.metaKey || e.ctrlKey;
     if (mod && e.key==='z' && !e.shiftKey) { e.preventDefault(); history.undo(); return; }
     if (mod && (e.key==='y' || (e.key==='z' && e.shiftKey))) { e.preventDefault(); history.redo(); return; }
-    if (e.key==='Escape') { closeHwModal(); closeSettings(); }
+    if (e.key==='Escape') {
+      closeHwModal(); closeSettings();
+      closeModal('whats-new-modal'); closeModal('privacy-modal');
+    }
   });
 }
 

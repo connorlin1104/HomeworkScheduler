@@ -766,6 +766,135 @@ input[type="color"] {
 .settings-tab-actions { display: flex; gap: 6px; }
 
 /* =============================================================================
+   HELP SECTION
+   ============================================================================= */
+.help-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.help-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text);
+  text-decoration: none;
+  transition: background var(--t);
+}
+.help-item:hover { background: var(--border); }
+
+.help-item-icon { font-size: 1.15rem; flex-shrink: 0; }
+.help-item-body { flex: 1; display: flex; flex-direction: column; gap: 1px; text-align: left; }
+.help-item-title { font-size: .88rem; font-weight: 600; }
+.help-item-desc  { font-size: .75rem; color: var(--text-muted); }
+.help-item-arrow { font-size: 1.2rem; color: var(--text-muted); flex-shrink: 0; }
+
+/* =============================================================================
+   WHAT'S NEW MODAL
+   ============================================================================= */
+.release-notes {
+  padding: 0 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.release-block { display: flex; flex-direction: column; gap: 8px; }
+
+.release-version {
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--primary);
+}
+
+.release-block ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.release-block ul li {
+  font-size: .85rem;
+  color: var(--text);
+  padding-left: 14px;
+  position: relative;
+}
+.release-block ul li::before {
+  content: '–';
+  position: absolute;
+  left: 0;
+  color: var(--text-muted);
+}
+
+kbd {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: .78rem;
+  font-family: monospace;
+}
+
+/* =============================================================================
+   PRIVACY MODAL
+   ============================================================================= */
+.privacy-content {
+  padding: 0 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.privacy-lead {
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.privacy-content h3 {
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.privacy-content p {
+  font-size: .875rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+.privacy-footer-note {
+  margin-top: 8px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  font-size: .82rem !important;
+  font-style: italic;
+  color: var(--text-muted) !important;
+}
+
+/* =============================================================================
+   SITE FOOTER
+   ============================================================================= */
+.site-footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 5px 20px;
+  font-size: .7rem;
+  color: var(--text-muted);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* =============================================================================
    TOAST NOTIFICATIONS
    ============================================================================= */
 #toast-container {

@@ -115,6 +115,7 @@
         <nav class="settings-sidebar">
           <button class="settings-nav-item" data-page="tabs">Managing Tabs</button>
           <button class="settings-nav-item settings-nav--active" data-page="classes">Managing Classes</button>
+          <button class="settings-nav-item" data-page="help">Help</button>
         </nav>
 
         <!-- RIGHT CONTENT -->
@@ -126,7 +127,7 @@
               <h3 class="settings-section-label">Tabs</h3>
               <div id="settings-tabs-list"></div>
               <form id="tab-form" class="inline-form">
-                <input type="text" id="tab-name" placeholder="New tab name (e.g. Robotics Club)" autocomplete="off">
+                <input type="text" id="tab-name" placeholder="New tab name (e.g. Clubs)" autocomplete="off">
                 <button type="submit" class="btn btn-sm btn-primary">Add Tab</button>
               </form>
             </div>
@@ -187,11 +188,126 @@
             </div>
           </div>
 
+          <!-- PAGE: Help -->
+          <div id="settings-page-help" class="settings-page hidden">
+            <div class="settings-section">
+              <h3 class="settings-section-label">Help &amp; Support</h3>
+              <div class="help-list">
+                <button class="help-item" id="whats-new-btn">
+                  <span class="help-item-icon">&#x1F4CB;</span>
+                  <div class="help-item-body">
+                    <span class="help-item-title">What's New</span>
+                    <span class="help-item-desc">Release notes and recent updates</span>
+                  </div>
+                  <span class="help-item-arrow">&#x203A;</span>
+                </button>
+                <button class="help-item" id="privacy-btn">
+                  <span class="help-item-icon">&#x1F512;</span>
+                  <div class="help-item-body">
+                    <span class="help-item-title">Terms &amp; Privacy</span>
+                    <span class="help-item-desc">How we handle your data</span>
+                  </div>
+                  <span class="help-item-arrow">&#x203A;</span>
+                </button>
+                <a class="help-item" id="bug-report-link" href="https://forms.google.com" target="_blank" rel="noopener">
+                  <span class="help-item-icon">&#x1F41B;</span>
+                  <div class="help-item-body">
+                    <span class="help-item-title">Report a Bug</span>
+                    <span class="help-item-desc">Let us know what went wrong</span>
+                  </div>
+                  <span class="help-item-arrow">&#x2197;</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
     </div>
   </div>
+
+  <!-- ================================================================
+       WHAT'S NEW MODAL
+       ================================================================ -->
+  <div id="whats-new-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="whats-new-title">
+    <div class="modal-backdrop" id="whats-new-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 id="whats-new-title">What's New</h2>
+        <button class="close-btn" id="close-whats-new" aria-label="Close">&times;</button>
+      </div>
+      <div class="release-notes">
+        <div class="release-block">
+          <h3 class="release-version">v1.3 &mdash; April 2026</h3>
+          <ul>
+            <li>Settings sidebar with <strong>Managing Tabs</strong> and <strong>Managing Classes</strong> pages</li>
+            <li>Edit button on each tab jumps directly to its classes</li>
+            <li>Form title and button reflect the active tab (e.g. <em>Add New Club</em>)</li>
+            <li>Colors auto-select the next unused preset when adding a group</li>
+            <li>Homework in each group is now sorted by due date</li>
+            <li>Cleaner + Add button and bolder action buttons</li>
+          </ul>
+        </div>
+        <div class="release-block">
+          <h3 class="release-version">v1.2 &mdash; March 2026</h3>
+          <ul>
+            <li>Tabs for organizing different groups (Classes, Clubs, etc.)</li>
+            <li>Summary panel &mdash; all upcoming assignments sorted by date, color-coded</li>
+            <li>Drag-to-reorder groups inside Settings</li>
+            <li>Edit button (&#x270E;) on each assignment reopens the pre-filled form</li>
+            <li>Per-group quick <strong>+ Add</strong> button in the class header</li>
+            <li>Data persists across updates &mdash; <code>db.json</code> is git-ignored</li>
+          </ul>
+        </div>
+        <div class="release-block">
+          <h3 class="release-version">v1.1 &mdash; February 2026</h3>
+          <ul>
+            <li>Undo / Redo for deletions and completions (<kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd>)</li>
+            <li>Period field normalizes any input (e.g. "1" or "one" → "1st Period")</li>
+            <li>Toast notifications now include the assignment name</li>
+            <li>Larger deadline field and bigger settings gear button</li>
+          </ul>
+        </div>
+        <div class="release-block">
+          <h3 class="release-version">v1.0 &mdash; January 2026</h3>
+          <ul>
+            <li>Initial release: color-coded class rows with teacher, room, and period info</li>
+            <li>Homework tracking with optional deadlines and notes</li>
+            <li>Node.js / Express backend with file-based storage</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       TERMS & PRIVACY MODAL
+       ================================================================ -->
+  <div id="privacy-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="privacy-title">
+    <div class="modal-backdrop" id="privacy-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 id="privacy-title">Terms &amp; Privacy</h2>
+        <button class="close-btn" id="close-privacy" aria-label="Close">&times;</button>
+      </div>
+      <div class="privacy-content">
+        <p class="privacy-lead">StudyFlow is a personal homework scheduler built for students.</p>
+        <h3>Your Data</h3>
+        <p>Everything you enter &mdash; classes, assignments, deadlines &mdash; is stored <strong>only on your own device</strong> in a local file (<code>data/db.json</code>). We do not have servers that collect your information.</p>
+        <h3>No Tracking</h3>
+        <p>StudyFlow does not use analytics, advertising, or any third-party tracking. We don't know who you are, what classes you take, or how you use the app.</p>
+        <h3>No Accounts</h3>
+        <p>There are no accounts, no sign-ins, and no passwords. Your data never leaves your machine unless you choose to share the file yourself.</p>
+        <p class="privacy-footer-note">We don&rsquo;t collect or sell your data &mdash; we only use it to show your schedule.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Site footer -->
+  <footer class="site-footer">
+    We don&rsquo;t collect or sell your data &mdash; your schedule stays on your device.
+  </footer>
 
   <!-- Toast notifications -->
   <div id="toast-container" aria-live="polite"></div>
