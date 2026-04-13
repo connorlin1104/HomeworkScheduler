@@ -5,15 +5,16 @@ const router  = express.Router();
 const store   = require('../store/dataStore');
 
 router.get('/', (req, res) => {
-  res.json(store.classes.list());
+  const all = store.classes.list();
+  const { tabId } = req.query;
+  res.json(tabId ? all.filter(c => c.tabId === tabId) : all);
 });
 
 router.post('/', (req, res) => {
-  const { name, color, teacher, room, period } = req.body;
-  if (!name?.trim()) {
-    return res.status(400).json({ error: 'name is required' });
-  }
+  const { name, color, teacher, room, period, tabId } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'name is required' });
   res.status(201).json(store.classes.create({
+    tabId:   tabId   || 'classes',
     name:    name.trim(),
     color:   color   || '#3b82f6',
     teacher: teacher || undefined,

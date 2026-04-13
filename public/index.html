@@ -20,11 +20,11 @@
       </label>
       <button class="btn btn-primary" id="add-hw-btn">+ Add Homework</button>
       <div class="undo-redo-group">
-        <button class="btn btn-icon-header" id="undo-btn" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↩</button>
-        <button class="btn btn-icon-header" id="redo-btn" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>↪</button>
+        <button class="btn-icon-header" id="undo-btn" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↩</button>
+        <button class="btn-icon-header" id="redo-btn" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>↪</button>
       </div>
-      <button class="btn btn-icon btn-icon--lg" id="settings-btn" title="Class Settings" aria-label="Class Settings">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <button class="btn btn-icon btn-icon--lg" id="settings-btn" title="Settings" aria-label="Settings">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M19.14,12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4,2.81c-.04-.24-.24-.41-.48-.41h-3.84c-.24,0-.43.17-.47.41L9.25,5.35c-.59.24-1.13.56-1.62.94L5.24,5.33c-.22-.08-.47,0-.59.22L2.74,8.87c-.12.21-.08.47.12.61l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s.02.64.07.94L2.84,14.52c-.18.14-.23.41-.12.61l1.92,3.32c.12.22.37.29.59.22l2.39-.96c.5.38,1.03.7,1.62.94l.36,2.54c.05.24.24.41.48.41h3.84c.24,0,.44-.17.47-.41l.36-2.54c.59-.24,1.13-.56,1.62-.94l2.39.96c.22.08.47,0,.59-.22l1.92-3.32c.12-.22.07-.47-.12-.61L19.14,12.94zM12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6,3.6,1.62,3.6,3.6-1.62,3.6-3.6,3.6z"/>
         </svg>
       </button>
@@ -32,18 +32,39 @@
   </header>
 
   <!-- ================================================================
-       MAIN CONTENT
+       APP BODY — split: main panel (tabs + classes) | summary panel
        ================================================================ -->
-  <main class="main-content">
-    <div id="classes-container"></div>
+  <div class="app-body">
 
-    <div id="empty-state" class="empty-state hidden">
-      <div class="empty-icon">&#x1F4DA;</div>
-      <h2>No classes yet</h2>
-      <p>Click the gear icon to add your classes and get started.</p>
-      <button class="btn btn-primary" id="empty-settings-btn">Set Up Classes</button>
+    <!-- LEFT: tab navigation + class rows -->
+    <div class="main-panel">
+      <div class="tab-bar">
+        <div class="tab-list" id="tab-list"></div>
+      </div>
+      <div class="tab-content">
+        <div id="classes-container"></div>
+        <div id="empty-state" class="empty-state hidden">
+          <div class="empty-icon">&#x1F4DA;</div>
+          <h2>No groups yet</h2>
+          <p>Open Settings to add groups to this tab.</p>
+          <button class="btn btn-primary" id="empty-settings-btn">Open Settings</button>
+        </div>
+      </div>
     </div>
-  </main>
+
+    <!-- RIGHT: upcoming summary -->
+    <aside class="summary-panel">
+      <div class="summary-header">
+        <span class="summary-title">Upcoming</span>
+        <span class="summary-count hidden" id="summary-count">0</span>
+      </div>
+      <div id="summary-list"></div>
+      <div id="summary-empty" class="summary-empty hidden">
+        <p>No upcoming assignments ✓</p>
+      </div>
+    </aside>
+
+  </div><!-- /.app-body -->
 
   <!-- ================================================================
        ADD HOMEWORK MODAL
@@ -57,7 +78,7 @@
       </div>
       <form id="hw-form" novalidate>
         <div class="form-group">
-          <label for="hw-class">Class <span class="required">*</span></label>
+          <label for="hw-class">Class / Group <span class="required">*</span></label>
           <select id="hw-class" required></select>
         </div>
         <div class="form-group">
@@ -87,25 +108,42 @@
     <div class="modal-backdrop" id="settings-backdrop"></div>
     <div class="modal-box modal-box--wide">
       <div class="modal-header">
-        <h2 id="settings-title">Class Settings</h2>
+        <h2 id="settings-title">Settings</h2>
         <button class="close-btn" id="close-settings" aria-label="Close">&times;</button>
       </div>
 
+      <!-- TABS SECTION -->
       <div class="settings-section">
-        <h3 class="settings-section-label">Your Classes</h3>
+        <h3 class="settings-section-label">Tabs</h3>
+        <div id="settings-tabs-list"></div>
+        <form id="tab-form" class="inline-form">
+          <input type="text" id="tab-name" placeholder="New tab name (e.g. Robotics Club)" autocomplete="off">
+          <button type="submit" class="btn btn-sm btn-primary">Add Tab</button>
+        </form>
+      </div>
+
+      <hr class="divider">
+
+      <!-- GROUPS IN TAB SECTION -->
+      <div class="settings-section">
+        <div class="settings-tab-header">
+          <h3 class="settings-section-label">Groups in</h3>
+          <select id="settings-tab-select"></select>
+        </div>
         <div id="settings-classes-list"></div>
       </div>
 
       <hr class="divider">
 
-      <div class="settings-section">
-        <h3 class="settings-section-label" id="class-form-title">Add New Class</h3>
+      <!-- ADD / EDIT GROUP FORM -->
+      <div class="settings-section settings-section--form">
+        <h3 class="settings-section-label" id="class-form-title">Add New Group</h3>
         <form id="class-form" novalidate>
           <input type="hidden" id="edit-class-id">
 
           <div class="form-row">
             <div class="form-group form-group--grow">
-              <label for="class-name">Class Name <span class="required">*</span></label>
+              <label for="class-name">Name <span class="required">*</span></label>
               <input type="text" id="class-name" placeholder="e.g. Mathematics" required autocomplete="off">
             </div>
             <div class="form-group">
@@ -119,25 +157,26 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label for="class-teacher">Teacher</label>
+              <label for="class-teacher">Teacher / Advisor</label>
               <input type="text" id="class-teacher" placeholder="e.g. Mr. Smith" autocomplete="off">
             </div>
             <div class="form-group">
-              <label for="class-room">Room</label>
+              <label for="class-room">Room / Location</label>
               <input type="text" id="class-room" placeholder="e.g. Room 101" autocomplete="off">
             </div>
             <div class="form-group">
-              <label for="class-period">Period</label>
-              <input type="text" id="class-period" placeholder="e.g. 1st Period" autocomplete="off">
+              <label for="class-period">Period / Time</label>
+              <input type="text" id="class-period" placeholder="e.g. 1 or Monday" autocomplete="off">
             </div>
           </div>
 
           <div class="form-actions">
             <button type="button" class="btn btn-secondary hidden" id="cancel-edit-class">Cancel Edit</button>
-            <button type="submit" class="btn btn-primary" id="class-form-submit">Add Class</button>
+            <button type="submit" class="btn btn-primary" id="class-form-submit">Add Group</button>
           </div>
         </form>
       </div>
+
     </div>
   </div>
 
