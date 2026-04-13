@@ -87,6 +87,12 @@ const PRESET_COLORS = [
 // Module-level drag state for settings reorder
 let _draggedClassId = null;
 
+// Returns the first preset color not yet used in the given tab
+function getNextAvailableColor(tabId) {
+  const used = new Set(state.classes.filter(c => c.tabId === tabId).map(c => c.color));
+  return PRESET_COLORS.find(c => !used.has(c)) ?? PRESET_COLORS[0];
+}
+
 /* =============================================================================
    UTILITIES
    ============================================================================= */
@@ -201,7 +207,14 @@ function renderSchedule() {
   emptyState.classList.add('hidden');
   container.innerHTML = '';
   tabClasses.forEach(cls => {
-    const pending = state.homework.filter(h => h.classId===cls.id && !h.completed);
+    const pending = state.homework
+      .filter(h => h.classId===cls.id && !h.completed)
+      .sort((a,b) => {
+        if (!a.deadline && !b.deadline) return 0;
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return new Date(a.deadline) - new Date(b.deadline);
+      });
     container.appendChild(buildClassRow(cls, pending));
   });
 }
@@ -334,7 +347,10 @@ function renderSettingsTabsList() {
       <span class="settings-tab-name">${esc(tab.name)}</span>
       ${tab.id === 'classes'
         ? '<span class="settings-tab-default">Default</span>'
-        : `<button class="btn btn-sm btn-danger delete-tab-btn" data-tab-id="${tab.id}">Delete</button>`}
+        : `<div class="settings-tab-actions">
+            <button class="btn btn-sm btn-secondary edit-tab-btn" data-tab-id="${tab.id}">Edit</button>
+            <button class="btn btn-sm btn-danger delete-tab-btn" data-tab-id="${tab.id}">Delete</button>
+           </div>`}
     `;
     list.appendChild(item);
   });
@@ -501,10 +517,11 @@ function closeHwModal() {
    SETTINGS MODAL
    ============================================================================= */
 function openSettings() {
-  resetClassForm();
   populateSettingsTabSelect(state.activeTabId);
+  resetClassForm();
   renderSettingsTabsList();
   renderSettingsClassList();
+  switchSettingsPage('classes');
   document.getElementById('settings-modal').classList.add('modal--open');
 }
 function closeSettings() { document.getElementById('settings-modal').classList.remove('modal--open'); }
@@ -515,13 +532,34 @@ function populateSettingsTabSelect(selectValue) {
   sel.value = selectValue || state.activeTabId;
 }
 
+function switchSettingsPage(page) {
+  document.getElementById('settings-page-tabs').classList.toggle('hidden', page !== 'tabs');
+  document.getElementById('settings-page-classes').classList.toggle('hidden', page !== 'classes');
+  document.querySelectorAll('.settings-nav-item').forEach(btn => {
+    btn.classList.toggle('settings-nav--active', btn.dataset.page === page);
+  });
+  if (page === 'classes') updateSettingsLabels();
+}
+
+function updateSettingsLabels() {
+  const tabId  = document.getElementById('settings-tab-select')?.value || 'classes';
+  const tab    = state.tabs.find(t => t.id === tabId);
+  const name   = tab ? tab.name : 'Classes';
+  const editId = document.getElementById('edit-class-id').value;
+  if (!editId) {
+    const isDefault = tabId === 'classes';
+    document.getElementById('class-form-title').textContent  = isDefault ? 'Add New Class'  : `Add New ${name} Group`;
+    document.getElementById('class-form-submit').textContent = isDefault ? 'Add Class'       : `Add to ${name}`;
+  }
+}
+
 function resetClassForm() {
   document.getElementById('class-form').reset();
-  document.getElementById('edit-class-id').value           = '';
-  document.getElementById('class-form-title').textContent  = 'Add New Group';
-  document.getElementById('class-form-submit').textContent = 'Add Group';
+  document.getElementById('edit-class-id').value = '';
   document.getElementById('cancel-edit-class').classList.add('hidden');
-  selectSwatch(PRESET_COLORS[4]);
+  const tabId = document.getElementById('settings-tab-select')?.value || 'classes';
+  selectSwatch(getNextAvailableColor(tabId));
+  updateSettingsLabels();
 }
 
 function startEditClass(cls) {
@@ -813,11 +851,28 @@ function wireEvents() {
   document.getElementById('class-form').addEventListener('submit', handleClassFormSubmit);
   document.getElementById('cancel-edit-class').addEventListener('click', resetClassForm);
   document.getElementById('tab-form').addEventListener('submit', handleAddTab);
-  document.getElementById('settings-tab-select').addEventListener('change', renderSettingsClassList);
+  document.getElementById('settings-tab-select').addEventListener('change', () => {
+    renderSettingsClassList();
+    updateSettingsLabels();
+    if (!document.getElementById('edit-class-id').value) {
+      selectSwatch(getNextAvailableColor(document.getElementById('settings-tab-select').value || 'classes'));
+    }
+  });
+
+  document.querySelectorAll('.settings-nav-item').forEach(btn => {
+    btn.addEventListener('click', () => switchSettingsPage(btn.dataset.page));
+  });
 
   document.getElementById('settings-tabs-list').addEventListener('click', e => {
-    const btn = e.target.closest('.delete-tab-btn');
-    if (btn) handleDeleteTab(btn.dataset.tabId);
+    const deleteBtn = e.target.closest('.delete-tab-btn');
+    const editBtn   = e.target.closest('.edit-tab-btn');
+    if (deleteBtn) handleDeleteTab(deleteBtn.dataset.tabId);
+    if (editBtn) {
+      populateSettingsTabSelect(editBtn.dataset.tabId);
+      resetClassForm();
+      renderSettingsClassList();
+      switchSettingsPage('classes');
+    }
   });
 
   document.getElementById('settings-classes-list').addEventListener('click', e => {
