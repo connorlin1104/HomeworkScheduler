@@ -106,6 +106,19 @@ const store = {
       db.homework = db.homework.filter(h => h.classId !== id);
       save(db);
       return true;
+    },
+    // Reorders classes within one tab. orderedIds = all IDs for that tab in new order.
+    reorder(orderedIds) {
+      if (!orderedIds?.length) return;
+      const db = load();
+      const first = db.classes.find(c => c.id === orderedIds[0]);
+      if (!first) return db.classes;
+      const tabId   = first.tabId;
+      const others  = db.classes.filter(c => c.tabId !== tabId);
+      const reordered = orderedIds.map(id => db.classes.find(c => c.id === id)).filter(Boolean);
+      db.classes = [...others, ...reordered];
+      save(db);
+      return db.classes;
     }
   },
 

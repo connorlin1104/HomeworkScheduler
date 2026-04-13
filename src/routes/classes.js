@@ -23,6 +23,13 @@ router.post('/', (req, res) => {
   }));
 });
 
+// Must appear before /:id routes so Express doesn't treat "reorder" as an ID
+router.post('/reorder', (req, res) => {
+  const { order } = req.body;
+  if (!Array.isArray(order)) return res.status(400).json({ error: 'order must be an array of IDs' });
+  res.json(store.classes.reorder(order));
+});
+
 router.put('/:id', (req, res) => {
   const { name, color, teacher, room, period } = req.body;
   const updated = store.classes.update(req.params.id, { name, color, teacher, room, period });

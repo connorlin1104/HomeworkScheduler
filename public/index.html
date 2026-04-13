@@ -14,10 +14,6 @@
   <header class="site-header">
     <h1 class="logo">StudyFlow</h1>
     <div class="header-actions">
-      <label class="toggle-completed">
-        <input type="checkbox" id="show-completed-toggle">
-        <span>Show completed</span>
-      </label>
       <button class="btn btn-primary" id="add-hw-btn">+ Add Homework</button>
       <div class="undo-redo-group">
         <button class="btn-icon-header" id="undo-btn" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↩</button>
@@ -77,6 +73,7 @@
         <button class="close-btn" id="close-hw-modal" aria-label="Close">&times;</button>
       </div>
       <form id="hw-form" novalidate>
+        <input type="hidden" id="hw-edit-id">
         <div class="form-group">
           <label for="hw-class">Class / Group <span class="required">*</span></label>
           <select id="hw-class" required></select>
@@ -95,7 +92,7 @@
         </div>
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" id="cancel-hw">Cancel</button>
-          <button type="submit" class="btn btn-primary">Add to Schedule</button>
+          <button type="submit" class="btn btn-primary" id="hw-form-submit">Add to Schedule</button>
         </div>
       </form>
     </div>
