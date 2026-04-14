@@ -12,7 +12,13 @@
        AUTH SCREEN
        ================================================================ -->
   <div id="auth-screen" class="auth-screen">
-    <div class="auth-card">
+    <!-- Shown while Firebase restores auth state -->
+    <div id="auth-loading" class="auth-loading">
+      <div class="spinner"></div>
+      <p>Loading…</p>
+    </div>
+    <!-- Shown when user is not signed in -->
+    <div id="auth-card" class="auth-card hidden">
       <div class="auth-logo">StudyFlow</div>
       <p class="auth-tagline">Your personal homework scheduler</p>
       <button id="google-signin-btn" class="btn-google-signin">
@@ -370,6 +376,10 @@
   <!-- Toast notifications -->
   <div id="toast-container" aria-live="polite"></div>
 
-  <script type="module" src="app.js"></script>
+  <!-- Firebase compat SDK (pre-bundled — no module waterfall, loads fast) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

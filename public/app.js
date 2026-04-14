@@ -1,44 +1,40 @@
-/* =============================================================================
-   FIREBASE IMPORTS & INIT
-   ============================================================================= */
-import { initializeApp }                                from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup,
-         onAuthStateChanged, signOut }                  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, collection, doc, getDocs,
-         addDoc, getDoc, updateDoc, deleteDoc,
-         setDoc, writeBatch, serverTimestamp,
-         deleteField }                                  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+'use strict';
 
-// Firebase config — the API key is safe to expose; security is enforced by Firestore Rules
-const firebaseConfig = {
+/* =============================================================================
+   FIREBASE INIT — compat SDK (loaded via <script> tags; no module waterfall)
+   ============================================================================= */
+// API key is safe to expose — security is enforced by Firestore Rules
+firebase.initializeApp({
   apiKey:            'AIzaSyDkysaVPbRhebH6UWcrgwSCZKAiUWdUSKU',
   authDomain:        'studyflow-38a6b.firebaseapp.com',
   projectId:         'studyflow-38a6b',
   storageBucket:     'studyflow-38a6b.firebasestorage.app',
   messagingSenderId: '1095751201974',
   appId:             '1:1095751201974:web:47146e2ca008eeeeee6217'
-};
+});
 
-const firebaseApp     = initializeApp(firebaseConfig);
-const auth            = getAuth(firebaseApp);
-const db              = getFirestore(firebaseApp);
-const googleProvider  = new GoogleAuthProvider();
+const auth = firebase.auth();
+const db   = firebase.firestore();
 
 let currentUser = null;
 
-// Firestore path helpers
-const userCol = col      => collection(db, 'users', currentUser.uid, col);
-const userDoc = (col,id) => doc(db,       'users', currentUser.uid, col, id);
+// Shorthand helpers for Firestore sentinel values
+const TS  = () => firebase.firestore.FieldValue.serverTimestamp();
+const DEL = () => firebase.firestore.FieldValue.delete();
+
+// Path helpers — call these only when currentUser is set
+const userCol = col      => db.collection('users').doc(currentUser.uid).collection(col);
+const userDoc = (col,id) => db.collection('users').doc(currentUser.uid).collection(col).doc(id);
 
 /* =============================================================================
-   API LAYER — Firestore
+   API LAYER — Firestore (compat SDK)
    ============================================================================= */
 const api = {
   tabs: {
     async list() {
-      const snap = await getDocs(userCol('tabs'));
+      const snap = await userCol('tabs').get();
       const tabs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // createdAt may be a Firestore Timestamp (has .seconds) or an ISO string (migrated data)
+      // createdAt may be a Firestore Timestamp (.seconds) or an ISO string (migrated data)
       tabs.sort((a, b) => {
         const ts = v => v?.seconds ?? (v ? new Date(v).getTime() / 1000 : 0);
         return ts(a.createdAt) - ts(b.createdAt);
@@ -46,18 +42,18 @@ const api = {
       return tabs;
     },
     async create(body) {
-      const ref = await addDoc(userCol('tabs'), { ...body, createdAt: serverTimestamp() });
+      const ref = await userCol('tabs').add({ ...body, createdAt: TS() });
       return { id: ref.id, ...body };
     },
     async update(id, body) {
-      await updateDoc(userDoc('tabs', id), body);
+      await userDoc('tabs', id).update(body);
       return { id, ...body };
     },
     async remove(id) {
       const clsInTab = state.classes.filter(c => c.tabId === id);
       const clsIds   = new Set(clsInTab.map(c => c.id));
       const hwInTab  = state.homework.filter(h => clsIds.has(h.classId));
-      const batch    = writeBatch(db);
+      const batch    = db.batch();
       batch.delete(userDoc('tabs', id));
       clsInTab.forEach(c => batch.delete(userDoc('classes',  c.id)));
       hwInTab.forEach( h => batch.delete(userDoc('homework', h.id)));
@@ -68,31 +64,31 @@ const api = {
 
   classes: {
     async list() {
-      const snap    = await getDocs(userCol('classes'));
+      const snap    = await userCol('classes').get();
       const classes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       classes.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       return classes;
     },
     async create(body) {
       const order = Date.now();
-      const ref   = await addDoc(userCol('classes'), { ...body, order, createdAt: serverTimestamp() });
+      const ref   = await userCol('classes').add({ ...body, order, createdAt: TS() });
       return { id: ref.id, ...body, order };
     },
     async update(id, body) {
-      await updateDoc(userDoc('classes', id), body);
-      const snap = await getDoc(userDoc('classes', id));
+      await userDoc('classes', id).update(body);
+      const snap = await userDoc('classes', id).get();
       return { id: snap.id, ...snap.data() };
     },
     async remove(id) {
       const hwToDelete = state.homework.filter(h => h.classId === id);
-      const batch      = writeBatch(db);
+      const batch      = db.batch();
       batch.delete(userDoc('classes', id));
       hwToDelete.forEach(h => batch.delete(userDoc('homework', h.id)));
       await batch.commit();
       return { ok: true };
     },
     async reorder(orderedIds) {
-      const batch = writeBatch(db);
+      const batch = db.batch();
       orderedIds.forEach((id, index) => batch.update(userDoc('classes', id), { order: index }));
       await batch.commit();
       return { ok: true };
@@ -101,20 +97,20 @@ const api = {
 
   homework: {
     async list() {
-      const snap = await getDocs(userCol('homework'));
+      const snap = await userCol('homework').get();
       return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     },
     async create(body) {
-      const ref = await addDoc(userCol('homework'), { ...body, completed: false, createdAt: serverTimestamp() });
+      const ref = await userCol('homework').add({ ...body, completed: false, createdAt: TS() });
       return { id: ref.id, ...body, completed: false };
     },
     async update(id, body) {
-      await updateDoc(userDoc('homework', id), body);
-      const snap = await getDoc(userDoc('homework', id));
+      await userDoc('homework', id).update(body);
+      const snap = await userDoc('homework', id).get();
       return { id: snap.id, ...snap.data() };
     },
     async remove(id) {
-      await deleteDoc(userDoc('homework', id));
+      await userDoc('homework', id).delete();
       return { ok: true };
     }
   }
@@ -257,6 +253,9 @@ function toast(message, type='info') {
    AUTH
    ============================================================================= */
 function showAuthScreen() {
+  // Hide spinner, show sign-in card
+  document.getElementById('auth-loading').classList.add('hidden');
+  document.getElementById('auth-card').classList.remove('hidden');
   document.getElementById('auth-screen').classList.remove('hidden');
   document.getElementById('app-wrapper').classList.add('hidden');
 }
@@ -268,7 +267,7 @@ function showApp() {
 
 async function handleGoogleSignIn() {
   try {
-    await signInWithPopup(auth, googleProvider);
+    await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
   } catch (err) {
     if (err.code !== 'auth/popup-closed-by-user') {
       toast(`Sign in failed: ${err.message}`, 'error');
@@ -282,7 +281,7 @@ async function handleSignOut() {
     state.activeTabId = null;
     history.past = []; history.future = [];
     updateHistoryBtns();
-    await signOut(auth);
+    await auth.signOut();
   } catch (err) { toast(`Sign out failed: ${err.message}`, 'error'); }
 }
 
@@ -762,11 +761,16 @@ async function handleAddHomework(e) {
   const deadline    = document.getElementById('hw-deadline').value;
   if (!classId || !description) return;
 
-  const payload = {
-    classId, description,
-    ...(notes    && { notes }),
-    ...(deadline && { deadline })
-  };
+  // When editing: use DEL() to clear fields the user removed.
+  // When creating: only include fields that have values.
+  const payload = { classId, description };
+  if (editId) {
+    payload.notes    = notes    || DEL();
+    payload.deadline = deadline || DEL();
+  } else {
+    if (notes)    payload.notes    = notes;
+    if (deadline) payload.deadline = deadline;
+  }
 
   try {
     if (editId) {
@@ -802,9 +806,9 @@ async function handleClassFormSubmit(e) {
   // Firestore can't store undefined. When editing, use deleteField() to clear
   // optional fields the user left blank; when creating, just omit them.
   if (id) {
-    data.teacher = teacher || deleteField();
-    data.room    = room    || deleteField();
-    data.period  = period  || deleteField();
+    data.teacher = teacher || DEL();
+    data.room    = room    || DEL();
+    data.period  = period  || DEL();
   } else {
     if (teacher) data.teacher = teacher;
     if (room)    data.room    = room;
@@ -1103,7 +1107,7 @@ async function init() {
   document.getElementById('migration-btn').addEventListener('click', migrateLocalData);
 
   // Firebase auth state drives everything
-  onAuthStateChanged(auth, async user => {
+  auth.onAuthStateChanged(async user => {
     if (user) {
       currentUser = user;
       const avatar = document.getElementById('user-avatar');
