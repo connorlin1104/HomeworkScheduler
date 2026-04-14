@@ -510,6 +510,8 @@ body {
 }
 .modal-box--wide {
   max-width: 720px;
+  height: 620px;
+  max-height: calc(100vh - 40px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -717,7 +719,6 @@ input[type="color"] {
 /* Settings modal sidebar layout */
 .settings-layout {
   display: flex;
-  min-height: 420px;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -733,6 +734,7 @@ input[type="color"] {
   flex-direction: column;
   gap: 3px;
   background: var(--bg);
+  overflow-y: auto;
 }
 
 .settings-nav-item {
@@ -924,6 +926,106 @@ kbd {
 .toast--error   { background: #7f1d1d; color: #fff; }
 .toast--warning { background: #78350f; color: #fff; }
 .toast--info    { background: var(--header-bg); color: #fff; }
+
+/* =============================================================================
+   AUTH SCREEN
+   ============================================================================= */
+.auth-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.auth-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 48px 40px;
+  text-align: center;
+  max-width: 380px;
+  width: 90%;
+}
+.auth-logo {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--header-bg);
+  margin-bottom: 8px;
+}
+.auth-tagline {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  margin-bottom: 36px;
+}
+.btn-google-signin {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  color: #3c4043;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  padding: 10px 20px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--t), box-shadow var(--t);
+  width: 100%;
+  justify-content: center;
+}
+.btn-google-signin:hover {
+  background: #f8f9fa;
+  box-shadow: 0 1px 3px rgba(0,0,0,.15);
+}
+.btn-google-signin svg { flex-shrink: 0; }
+
+/* User area in header */
+.user-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.user-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,.3);
+}
+.user-name {
+  font-size: 0.85rem;
+  color: var(--header-text);
+  opacity: 0.9;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn-sign-out {
+  font-size: 0.78rem;
+  padding: 3px 10px;
+  background: transparent;
+  color: var(--header-text);
+  border: 1px solid rgba(255,255,255,.35);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--t);
+}
+.btn-sign-out:hover { background: rgba(255,255,255,.12); }
+
+/* =============================================================================
+   APP WRAPPER
+   ============================================================================= */
+#app-wrapper:not(.hidden) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
 
 /* =============================================================================
    UTILITIES

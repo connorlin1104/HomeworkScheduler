@@ -22,9 +22,6 @@ router.put('/:id', (req, res) => {
 });
 
 router.delete('/:id', (req, res) => {
-  if (req.params.id === 'classes') {
-    return res.status(403).json({ error: 'Cannot delete the default Classes tab' });
-  }
   if (!store.tabs.delete(req.params.id)) {
     return res.status(404).json({ error: 'Tab not found' });
   }

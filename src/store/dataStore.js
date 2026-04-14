@@ -23,11 +23,15 @@ function defaultDb() {
 
 // Migrate older data that predates the tabs system
 function migrate(db) {
-  if (!db.tabs) db.tabs = [DEFAULT_CLASSES_TAB];
-  else if (!db.tabs.find(t => t.id === 'classes')) db.tabs.unshift(DEFAULT_CLASSES_TAB);
+  // Seed default tab only on the very first run (no tabs exist at all)
+  if (!db.tabs || db.tabs.length === 0) db.tabs = [DEFAULT_CLASSES_TAB];
 
-  // Ensure every class has a tabId
-  db.classes = (db.classes || []).map(c => c.tabId ? c : { tabId: 'classes', ...c });
+  // Back-compat: assign tabId to pre-tabs classes only if 'classes' tab still exists
+  if (db.tabs.find(t => t.id === 'classes')) {
+    db.classes = (db.classes || []).map(c => c.tabId ? c : { tabId: 'classes', ...c });
+  } else {
+    db.classes = (db.classes || []).filter(c => c.tabId);
+  }
   db.homework = db.homework || [];
   return db;
 }
@@ -58,7 +62,6 @@ const store = {
       return record;
     },
     update(id, fields) {
-      if (id === 'classes') return null; // default tab is immutable
       const db = load();
       const i = db.tabs.findIndex(t => t.id === id);
       if (i === -1) return null;
@@ -67,7 +70,6 @@ const store = {
       return db.tabs[i];
     },
     delete(id) {
-      if (id === 'classes') return false;
       const db = load();
       const i = db.tabs.findIndex(t => t.id === id);
       if (i === -1) return false;
