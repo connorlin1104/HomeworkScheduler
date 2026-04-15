@@ -44,7 +44,7 @@
   <header class="site-header">
     <h1 class="logo">StudyFlow</h1>
     <div class="header-actions">
-      <button class="btn btn-primary" id="add-hw-btn">+ Add Item</button>
+      <button class="btn btn-primary" id="add-hw-btn">+ Add Homework</button>
       <div class="undo-redo-group">
         <button class="btn-icon-header" id="undo-btn" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↩</button>
         <button class="btn-icon-header" id="redo-btn" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>↪</button>
@@ -160,18 +160,11 @@
           <div id="settings-page-tabs" class="settings-page hidden">
             <div class="settings-section">
               <h3 class="settings-section-label">Tabs</h3>
+              <div id="settings-tabs-list"></div>
               <form id="tab-form" class="inline-form">
                 <input type="text" id="tab-name" placeholder="New tab name (e.g. Clubs)" autocomplete="off">
                 <button type="submit" class="btn btn-sm btn-primary">Add Tab</button>
               </form>
-              <style>
-                #tab-form {
-                  padding-bottom: 30px;
-                }
-              </style>
-              <h3 class="settings-section-label">Tab List</h3>
-              <div id="settings-tabs-list"></div>
-              
             </div>
           </div>
 
@@ -216,17 +209,6 @@
                   </div>
                   <span class="help-item-arrow">&#x2197;</span>
                 </a>
-              </div>
-            </div>
-
-            <hr class="divider">
-
-            <div class="settings-section">
-              <h3 class="settings-section-label">Import Local Data</h3>
-              <p class="settings-empty" style="margin-bottom:8px">Paste the full contents of your <code>data/db.json</code> to migrate your existing schedule into your account.</p>
-              <textarea id="migration-json" rows="5" placeholder='{"tabs":[...],"classes":[...],"homework":[]}'></textarea>
-              <div class="form-actions" style="margin-top:8px">
-                <button class="btn btn-sm btn-primary" id="migration-btn">Import Data</button>
               </div>
             </div>
           </div>
@@ -376,10 +358,9 @@
   <!-- Toast notifications -->
   <div id="toast-container" aria-live="polite"></div>
 
-  <!-- Firebase compat SDK (pre-bundled — no module waterfall, loads fast) -->
+  <!-- Firebase Auth only (no Firestore — data stays on the local server) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -1,9 +1,8 @@
 'use strict';
 
 /* =============================================================================
-   FIREBASE INIT — compat SDK (loaded via <script> tags; no module waterfall)
+   FIREBASE AUTH — compat SDK (loaded via <script> tags)
    ============================================================================= */
-// API key is safe to expose — security is enforced by Firestore Rules
 firebase.initializeApp({
   apiKey:            'AIzaSyDkysaVPbRhebH6UWcrgwSCZKAiUWdUSKU',
   authDomain:        'studyflow-38a6b.firebaseapp.com',
@@ -14,105 +13,38 @@ firebase.initializeApp({
 });
 
 const auth = firebase.auth();
-const db   = firebase.firestore();
-
 let currentUser = null;
 
-// Shorthand helpers for Firestore sentinel values
-const TS  = () => firebase.firestore.FieldValue.serverTimestamp();
-const DEL = () => firebase.firestore.FieldValue.delete();
-
-// Path helpers — call these only when currentUser is set
-const userCol = col      => db.collection('users').doc(currentUser.uid).collection(col);
-const userDoc = (col,id) => db.collection('users').doc(currentUser.uid).collection(col).doc(id);
-
 /* =============================================================================
-   API LAYER — Firestore (compat SDK)
+   API LAYER
    ============================================================================= */
 const api = {
+  async _req(method, url, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body !== undefined) opts.body = JSON.stringify(body);
+    const res  = await fetch(url, opts);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  },
   tabs: {
-    async list() {
-      const snap = await userCol('tabs').get();
-      const tabs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // createdAt may be a Firestore Timestamp (.seconds) or an ISO string (migrated data)
-      tabs.sort((a, b) => {
-        const ts = v => v?.seconds ?? (v ? new Date(v).getTime() / 1000 : 0);
-        return ts(a.createdAt) - ts(b.createdAt);
-      });
-      return tabs;
-    },
-    async create(body) {
-      const ref = await userCol('tabs').add({ ...body, createdAt: TS() });
-      return { id: ref.id, ...body };
-    },
-    async update(id, body) {
-      await userDoc('tabs', id).update(body);
-      return { id, ...body };
-    },
-    async remove(id) {
-      const clsInTab = state.classes.filter(c => c.tabId === id);
-      const clsIds   = new Set(clsInTab.map(c => c.id));
-      const hwInTab  = state.homework.filter(h => clsIds.has(h.classId));
-      const batch    = db.batch();
-      batch.delete(userDoc('tabs', id));
-      clsInTab.forEach(c => batch.delete(userDoc('classes',  c.id)));
-      hwInTab.forEach( h => batch.delete(userDoc('homework', h.id)));
-      await batch.commit();
-      return { ok: true };
-    }
+    list:   ()       => api._req('GET',    '/api/tabs'),
+    create: (body)   => api._req('POST',   '/api/tabs', body),
+    update: (id, b)  => api._req('PUT',    `/api/tabs/${id}`, b),
+    remove: (id)     => api._req('DELETE', `/api/tabs/${id}`)
   },
-
   classes: {
-    async list() {
-      const snap    = await userCol('classes').get();
-      const classes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      classes.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      return classes;
-    },
-    async create(body) {
-      const order = Date.now();
-      const ref   = await userCol('classes').add({ ...body, order, createdAt: TS() });
-      return { id: ref.id, ...body, order };
-    },
-    async update(id, body) {
-      await userDoc('classes', id).update(body);
-      const snap = await userDoc('classes', id).get();
-      return { id: snap.id, ...snap.data() };
-    },
-    async remove(id) {
-      const hwToDelete = state.homework.filter(h => h.classId === id);
-      const batch      = db.batch();
-      batch.delete(userDoc('classes', id));
-      hwToDelete.forEach(h => batch.delete(userDoc('homework', h.id)));
-      await batch.commit();
-      return { ok: true };
-    },
-    async reorder(orderedIds) {
-      const batch = db.batch();
-      orderedIds.forEach((id, index) => batch.update(userDoc('classes', id), { order: index }));
-      await batch.commit();
-      return { ok: true };
-    }
+    list:    ()       => api._req('GET',    '/api/classes'),
+    create:  (body)   => api._req('POST',   '/api/classes', body),
+    update:  (id, b)  => api._req('PUT',    `/api/classes/${id}`, b),
+    remove:  (id)     => api._req('DELETE', `/api/classes/${id}`),
+    reorder: (order)  => api._req('POST',   '/api/classes/reorder', { order })
   },
-
   homework: {
-    async list() {
-      const snap = await userCol('homework').get();
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    },
-    async create(body) {
-      const ref = await userCol('homework').add({ ...body, completed: false, createdAt: TS() });
-      return { id: ref.id, ...body, completed: false };
-    },
-    async update(id, body) {
-      await userDoc('homework', id).update(body);
-      const snap = await userDoc('homework', id).get();
-      return { id: snap.id, ...snap.data() };
-    },
-    async remove(id) {
-      await userDoc('homework', id).delete();
-      return { ok: true };
-    }
+    list:   ()       => api._req('GET',    '/api/homework'),
+    create: (body)   => api._req('POST',   '/api/homework', body),
+    update: (id, b)  => api._req('PUT',    `/api/homework/${id}`, b),
+    remove: (id)     => api._req('DELETE', `/api/homework/${id}`)
   }
 };
 
@@ -121,7 +53,7 @@ const api = {
    ============================================================================= */
 const state = {
   tabs:        [],
-  activeTabId: null,
+  activeTabId: 'classes',
   classes:     [],
   homework:    []
 };
@@ -167,13 +99,16 @@ const PRESET_COLORS = [
   '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'
 ];
 
+// Module-level drag state for settings reorder
 let _draggedClassId = null;
 
+// Returns the first preset color not yet used in the given tab
 function getNextAvailableColor(tabId) {
   const used = new Set(state.classes.filter(c => c.tabId === tabId).map(c => c.color));
   return PRESET_COLORS.find(c => !used.has(c)) ?? PRESET_COLORS[0];
 }
 
+// Basic singularizer: "Clubs" → "Club", "Activities" → "Activity", "Classes" → "Class"
 function singularize(name) {
   if (name.endsWith('ies')) return name.slice(0, -3) + 'y';
   if (/[sx]es$/.test(name) || name.endsWith('ches') || name.endsWith('shes')) return name.slice(0, -2);
@@ -202,12 +137,14 @@ function normalizePeriod(raw) {
   function ordinal(n) {
     if ([11,12,13].includes(n%100)) return `${n}th`;
     const r = n%10;
-    if (r===1) return `${n}st`; if (r===2) return `${n}nd`; if (r===3) return `${n}rd`;
+    if (r===1) return `${n}st`;
+    if (r===2) return `${n}nd`;
+    if (r===3) return `${n}rd`;
     return `${n}th`;
   }
-  const stripped  = s.replace(/^\bperiod\b\s*/i,'').replace(/\s*\bperiod\b$/i,'').trim();
-  const numMatch  = stripped.match(/^(\d+)(st|nd|rd|th)?$/i);
-  if (numMatch) { const n = parseInt(numMatch[1],10); if (n>=1&&n<=20) return `${ordinal(n)} Period`; }
+  const stripped = s.replace(/^\bperiod\b\s*/i,'').replace(/\s*\bperiod\b$/i,'').trim();
+  const numMatch = stripped.match(/^(\d+)(st|nd|rd|th)?$/i);
+  if (numMatch) { const n = parseInt(numMatch[1],10); if (n>=1 && n<=20) return `${ordinal(n)} Period`; }
   const lower = stripped.toLowerCase();
   if (WORD_MAP[lower] !== undefined) return `${ordinal(WORD_MAP[lower])} Period`;
   return s;
@@ -216,7 +153,8 @@ function normalizePeriod(raw) {
 function parseDeadline(dateStr) {
   if (!dateStr) return null;
   const due   = new Date(dateStr + 'T00:00:00');
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today = new Date();
+  today.setHours(0,0,0,0);
   const diff  = Math.floor((due-today)/86_400_000);
   const label = due.toLocaleDateString('en-US', {
     month:'short', day:'numeric',
@@ -250,67 +188,6 @@ function toast(message, type='info') {
 }
 
 /* =============================================================================
-   AUTH
-   ============================================================================= */
-function showAuthScreen() {
-  // Hide spinner, show sign-in card
-  document.getElementById('auth-loading').classList.add('hidden');
-  document.getElementById('auth-card').classList.remove('hidden');
-  document.getElementById('auth-screen').classList.remove('hidden');
-  document.getElementById('app-wrapper').classList.add('hidden');
-}
-
-function showApp() {
-  document.getElementById('auth-screen').classList.add('hidden');
-  document.getElementById('app-wrapper').classList.remove('hidden');
-}
-
-async function handleGoogleSignIn() {
-  try {
-    await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-  } catch (err) {
-    if (err.code !== 'auth/popup-closed-by-user') {
-      toast(`Sign in failed: ${err.message}`, 'error');
-    }
-  }
-}
-
-async function handleSignOut() {
-  try {
-    state.tabs = []; state.classes = []; state.homework = [];
-    state.activeTabId = null;
-    history.past = []; history.future = [];
-    updateHistoryBtns();
-    await auth.signOut();
-  } catch (err) { toast(`Sign out failed: ${err.message}`, 'error'); }
-}
-
-async function loadUserData() {
-  try {
-    const [tabs, classes, homework] = await Promise.all([
-      api.tabs.list(), api.classes.list(), api.homework.list()
-    ]);
-    state.tabs     = tabs;
-    state.classes  = classes;
-    state.homework = homework;
-    state.activeTabId = tabs.length > 0 ? tabs[0].id : null;
-    renderTabBar(); renderSchedule(); renderSummary();
-  } catch (err) {
-    console.error('loadUserData failed:', err);
-    // Show a persistent banner so the user knows something is wrong
-    const container = document.getElementById('classes-container');
-    const emptyState = document.getElementById('empty-state');
-    emptyState.classList.add('hidden');
-    container.innerHTML = `
-      <div style="padding:32px;text-align:center;color:#ef4444;">
-        <strong>Could not load your data.</strong><br>
-        <span style="font-size:0.85rem;color:#64748b;">${err.message}</span><br><br>
-        <button class="btn btn-secondary" onclick="location.reload()">Retry</button>
-      </div>`;
-  }
-}
-
-/* =============================================================================
    RENDER — TAB BAR
    ============================================================================= */
 function renderTabBar() {
@@ -333,7 +210,8 @@ function renderTabBar() {
 
 function setActiveTab(tabId) {
   state.activeTabId = tabId;
-  renderTabBar(); renderSchedule();
+  renderTabBar();
+  renderSchedule();
 }
 
 /* =============================================================================
@@ -342,6 +220,7 @@ function setActiveTab(tabId) {
 function renderSchedule() {
   const container  = document.getElementById('classes-container');
   const emptyState = document.getElementById('empty-state');
+
   const tabClasses = state.classes.filter(c => c.tabId === state.activeTabId);
   if (tabClasses.length === 0) {
     container.innerHTML = '';
@@ -355,7 +234,8 @@ function renderSchedule() {
       .filter(h => h.classId===cls.id && !h.completed)
       .sort((a,b) => {
         if (!a.deadline && !b.deadline) return 0;
-        if (!a.deadline) return 1; if (!b.deadline) return -1;
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
         return new Date(a.deadline) - new Date(b.deadline);
       });
     container.appendChild(buildClassRow(cls, pending));
@@ -418,15 +298,15 @@ function buildHwItem(hw) {
     </div>
     <div class="hw-right">
       ${dlHtml}
-      <button class="btn-icon-sm hw-edit-btn" data-hw-id="${hw.id}" aria-label="Edit">✎</button>
-      <button class="btn-icon-sm hw-delete"   data-hw-id="${hw.id}" aria-label="Delete">&#x2715;</button>
+      <button class="btn-icon-sm hw-edit-btn"   data-hw-id="${hw.id}" aria-label="Edit">✎</button>
+      <button class="btn-icon-sm hw-delete"      data-hw-id="${hw.id}" aria-label="Delete">&#x2715;</button>
     </div>
   `;
   return item;
 }
 
 /* =============================================================================
-   RENDER — SUMMARY PANEL
+   RENDER — SUMMARY PANEL (all pending, sorted by deadline)
    ============================================================================= */
 function renderSummary() {
   const list       = document.getElementById('summary-list');
@@ -437,23 +317,28 @@ function renderSummary() {
     .filter(h => !h.completed)
     .sort((a,b) => {
       if (!a.deadline && !b.deadline) return 0;
-      if (!a.deadline) return 1; if (!b.deadline) return -1;
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
       return new Date(a.deadline) - new Date(b.deadline);
     });
 
   countBadge.textContent = pending.length;
   countBadge.classList.toggle('hidden', pending.length === 0);
 
-  if (pending.length === 0) { list.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  if (pending.length === 0) {
+    list.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
   empty.classList.add('hidden');
   list.innerHTML = '';
 
   pending.forEach(hw => {
     const cls = state.classes.find(c => c.id === hw.classId);
     if (!cls) return;
-    const tab  = state.tabs.find(t => t.id === cls.tabId);
-    const dl   = parseDeadline(hw.deadline);
-    const item = document.createElement('div');
+    const tab    = state.tabs.find(t => t.id === cls.tabId);
+    const dl     = parseDeadline(hw.deadline);
+    const item   = document.createElement('div');
     item.className = 'summary-item';
     item.style.setProperty('--color', cls.color || '#94a3b8');
     const metaParts = [cls.name];
@@ -483,20 +368,22 @@ function renderSettingsTabsList() {
     item.className = 'settings-tab-item';
     item.innerHTML = `
       <span class="settings-tab-name">${esc(tab.name)}</span>
-      <div class="settings-tab-actions">
-        <button class="btn btn-sm btn-secondary edit-tab-btn" data-tab-id="${tab.id}">Edit</button>
-        <button class="btn btn-sm btn-danger delete-tab-btn" data-tab-id="${tab.id}">Delete</button>
-      </div>
+      ${tab.id === 'classes'
+        ? '<span class="settings-tab-default">Default</span>'
+        : `<div class="settings-tab-actions">
+            <button class="btn btn-sm btn-secondary edit-tab-btn" data-tab-id="${tab.id}">Edit</button>
+            <button class="btn btn-sm btn-danger delete-tab-btn" data-tab-id="${tab.id}">Delete</button>
+           </div>`}
     `;
     list.appendChild(item);
   });
 }
 
 /* =============================================================================
-   RENDER — SETTINGS CLASS LIST (drag-to-reorder)
+   RENDER — SETTINGS CLASS LIST (with drag-to-reorder)
    ============================================================================= */
 function renderSettingsClassList() {
-  const tabId   = document.getElementById('settings-tab-select').value || state.activeTabId;
+  const tabId   = document.getElementById('settings-tab-select').value || 'classes';
   const list    = document.getElementById('settings-classes-list');
   const classes = state.classes.filter(c => c.tabId === tabId);
 
@@ -560,8 +447,11 @@ function renderSettingsClassList() {
       state.classes = [...state.classes.filter(c => c.tabId !== tabId), ...tabClasses];
       try {
         await api.classes.reorder(tabClasses.map(c => c.id));
-        renderSettingsClassList(); renderSchedule();
-      } catch (err) { toast(`Reorder failed: ${err.message}`, 'error'); }
+        renderSettingsClassList();
+        renderSchedule();
+      } catch (err) {
+        toast(`Reorder failed: ${err.message}`, 'error');
+      }
     });
 
     list.appendChild(item);
@@ -600,12 +490,16 @@ function selectSwatch(color) {
    HOMEWORK MODAL
    ============================================================================= */
 function openHwModal(preselectedClassId = null) {
-  if (state.classes.length === 0) { toast('Add some groups first in Settings.', 'warning'); return; }
+  if (state.classes.length === 0) {
+    toast('Add some groups first in Settings.', 'warning');
+    return;
+  }
   document.getElementById('hw-form').reset();
   document.getElementById('hw-edit-id').value = '';
   document.getElementById('hw-modal-title').textContent = 'New Assignment';
   document.getElementById('hw-form-submit').textContent = 'Add to Schedule';
 
+  // Build grouped <optgroup> select
   const select = document.getElementById('hw-class');
   let html = '';
   state.tabs.forEach(tab => {
@@ -618,6 +512,7 @@ function openHwModal(preselectedClassId = null) {
   select.innerHTML = html;
 
   if (preselectedClassId) select.value = preselectedClassId;
+
   document.getElementById('hw-modal').classList.add('modal--open');
   document.getElementById('hw-desc').focus();
 }
@@ -625,7 +520,10 @@ function openHwModal(preselectedClassId = null) {
 function openHwEditModal(hwId) {
   const hw = state.homework.find(h => h.id === hwId);
   if (!hw) return;
-  openHwModal(hw.classId);
+
+  openHwModal(hw.classId); // sets up select, resets form, opens modal
+
+  // Override with existing values
   document.getElementById('hw-edit-id').value             = hw.id;
   document.getElementById('hw-desc').value                = hw.description || '';
   document.getElementById('hw-notes').value               = hw.notes       || '';
@@ -634,7 +532,9 @@ function openHwEditModal(hwId) {
   document.getElementById('hw-form-submit').textContent   = 'Save Changes';
 }
 
-function closeHwModal() { document.getElementById('hw-modal').classList.remove('modal--open'); }
+function closeHwModal() {
+  document.getElementById('hw-modal').classList.remove('modal--open');
+}
 
 /* =============================================================================
    SETTINGS MODAL
@@ -666,9 +566,9 @@ function switchSettingsPage(page) {
 }
 
 function updateSettingsLabels() {
-  const tabId  = document.getElementById('settings-tab-select')?.value || state.activeTabId;
+  const tabId  = document.getElementById('settings-tab-select')?.value || 'classes';
   const tab    = state.tabs.find(t => t.id === tabId);
-  const name   = tab ? tab.name : 'Group';
+  const name   = tab ? tab.name : 'Classes';
   const editId = document.getElementById('edit-class-id').value;
   if (!editId) {
     const singular = singularize(name);
@@ -677,11 +577,21 @@ function updateSettingsLabels() {
   }
 }
 
+function openGroupForm() {
+  document.getElementById('group-form-modal').classList.add('modal--open');
+  document.getElementById('class-name').focus();
+}
+
+function closeGroupForm() {
+  document.getElementById('group-form-modal').classList.remove('modal--open');
+  resetClassForm();
+}
+
 function resetClassForm() {
   document.getElementById('class-form').reset();
   document.getElementById('edit-class-id').value = '';
   document.getElementById('cancel-edit-class').classList.add('hidden');
-  const tabId = document.getElementById('settings-tab-select')?.value || state.activeTabId;
+  const tabId = document.getElementById('settings-tab-select')?.value || 'classes';
   selectSwatch(getNextAvailableColor(tabId));
   updateSettingsLabels();
 }
@@ -694,59 +604,8 @@ function startEditClass(cls) {
   document.getElementById('class-period').value            = cls.period  || '';
   document.getElementById('group-form-title').textContent  = 'Edit Group';
   document.getElementById('class-form-submit').textContent = 'Save Changes';
-  document.getElementById('cancel-edit-class').classList.remove('hidden');
   selectSwatch(cls.color || PRESET_COLORS[4]);
   openGroupForm();
-}
-
-function openGroupForm() {
-  document.getElementById('group-form-modal').classList.add('modal--open');
-  document.getElementById('class-name').focus();
-}
-function closeGroupForm() {
-  document.getElementById('group-form-modal').classList.remove('modal--open');
-  resetClassForm();
-}
-
-/* =============================================================================
-   MIGRATION — import from local db.json
-   ============================================================================= */
-async function migrateLocalData() {
-  const raw = document.getElementById('migration-json').value.trim();
-  if (!raw) return;
-  let data;
-  try { data = JSON.parse(raw); }
-  catch { toast('Invalid JSON — paste the full contents of db.json', 'error'); return; }
-
-  try {
-    const allTabs  = data.tabs     || [];
-    const allCls   = data.classes  || [];
-    const allHw    = data.homework || [];
-    const ops = allTabs.length + allCls.length + allHw.length;
-    if (ops === 0) { toast('Nothing found to import.', 'warning'); return; }
-
-    // Firestore batches are limited to 500 ops — chunk if needed
-    const MAX = 499;
-    const allOps = [
-      ...allTabs.map((t, _i) => ({ col: 'tabs',     id: t.id, fields: (({ id, ...f }) => f)(t) })),
-      ...allCls.map((c,  i)  => ({ col: 'classes',  id: c.id, fields: (({ id, ...f }) => ({ ...f, order: i }))(c) })),
-      ...allHw.map((h,  _i) => ({ col: 'homework',  id: h.id, fields: (({ id, ...f }) => f)(h) }))
-    ];
-
-    for (let start = 0; start < allOps.length; start += MAX) {
-      const chunk = allOps.slice(start, start + MAX);
-      const batch = writeBatch(db);
-      chunk.forEach(({ col, id, fields }) => batch.set(userDoc(col, id), fields));
-      await batch.commit();
-    }
-
-    document.getElementById('migration-json').value = '';
-    toast(`Imported ${ops} records successfully!`, 'success');
-    await loadUserData();
-  } catch (err) {
-    console.error('Migration failed:', err);
-    alert(`Import failed: ${err.message}\n\nCheck the browser console (F12) for details.\nMake sure you have run "firebase deploy" to activate Firestore security rules.`);
-  }
 }
 
 /* =============================================================================
@@ -761,28 +620,29 @@ async function handleAddHomework(e) {
   const deadline    = document.getElementById('hw-deadline').value;
   if (!classId || !description) return;
 
-  // When editing: use DEL() to clear fields the user removed.
-  // When creating: only include fields that have values.
-  const payload = { classId, description };
-  if (editId) {
-    payload.notes    = notes    || DEL();
-    payload.deadline = deadline || DEL();
-  } else {
-    if (notes)    payload.notes    = notes;
-    if (deadline) payload.deadline = deadline;
-  }
+  const payload = {
+    classId, description,
+    ...(notes    && { notes }),
+    ...(deadline && { deadline })
+  };
 
   try {
     if (editId) {
+      // ---- EDIT MODE ----
       const updated = await api.homework.update(editId, payload);
       const i = state.homework.findIndex(h => h.id === editId);
       if (i !== -1) state.homework[i] = { ...state.homework[i], ...updated };
-      renderSchedule(); renderSummary(); closeHwModal();
+      renderSchedule();
+      renderSummary();
+      closeHwModal();
       toast(`Updated "${description}"`, 'success');
     } else {
+      // ---- CREATE MODE ----
       const hw = await api.homework.create(payload);
       state.homework.push(hw);
-      renderSchedule(); renderSummary(); closeHwModal();
+      renderSchedule();
+      renderSummary();
+      closeHwModal();
       toast(`Added "${description}"`, 'success');
     }
   } catch (err) { toast(`Error: ${err.message}`, 'error'); }
@@ -790,30 +650,17 @@ async function handleAddHomework(e) {
 
 async function handleClassFormSubmit(e) {
   e.preventDefault();
-  const id      = document.getElementById('edit-class-id').value;
-  const tabId   = document.getElementById('settings-tab-select').value || state.activeTabId;
-  const teacher = document.getElementById('class-teacher').value.trim();
-  const room    = document.getElementById('class-room').value.trim();
-  const period  = normalizePeriod(document.getElementById('class-period').value) || '';
-
-  const data = {
+  const id    = document.getElementById('edit-class-id').value;
+  const tabId = document.getElementById('settings-tab-select').value || 'classes';
+  const data  = {
     tabId,
-    name:  document.getElementById('class-name').value.trim(),
-    color: document.getElementById('class-color').value,
+    name:    document.getElementById('class-name').value.trim(),
+    color:   document.getElementById('class-color').value,
+    teacher: document.getElementById('class-teacher').value.trim() || undefined,
+    room:    document.getElementById('class-room').value.trim()    || undefined,
+    period:  normalizePeriod(document.getElementById('class-period').value) || undefined
   };
   if (!data.name) return;
-
-  // Firestore can't store undefined. When editing, use deleteField() to clear
-  // optional fields the user left blank; when creating, just omit them.
-  if (id) {
-    data.teacher = teacher || DEL();
-    data.room    = room    || DEL();
-    data.period  = period  || DEL();
-  } else {
-    if (teacher) data.teacher = teacher;
-    if (room)    data.room    = room;
-    if (period)  data.period  = period;
-  }
 
   try {
     if (id) {
@@ -824,10 +671,12 @@ async function handleClassFormSubmit(e) {
     } else {
       const created = await api.classes.create(data);
       state.classes.push(created);
-      toast(`Added "${data.name}"`, 'success');
+      toast(`Added group "${data.name}"`, 'success');
     }
     closeGroupForm();
-    renderSettingsClassList(); renderSchedule(); renderSummary();
+    renderSettingsClassList();
+    renderSchedule();
+    renderSummary();
   } catch (err) { toast(`Error: ${err.message}`, 'error'); }
 }
 
@@ -839,16 +688,18 @@ async function handleAddTab(e) {
     const tab = await api.tabs.create({ name });
     state.tabs.push(tab);
     document.getElementById('tab-name').value = '';
-    renderTabBar(); renderSettingsTabsList();
-    populateSettingsTabSelect(tab.id); renderSettingsClassList();
+    renderTabBar();
+    renderSettingsTabsList();
+    populateSettingsTabSelect(tab.id);
+    renderSettingsClassList();
     toast(`Added tab "${name}"`, 'success');
   } catch (err) { toast(`Error: ${err.message}`, 'error'); }
 }
 
 async function handleDeleteTab(tabId) {
   const tab    = state.tabs.find(t => t.id === tabId);
-  if (!tab) return;
-  const tabCls  = state.classes.filter(c => c.tabId === tabId);
+  if (!tab || tabId === 'classes') return;
+  const tabCls = state.classes.filter(c => c.tabId === tabId);
   const hwCount = state.homework.filter(h => tabCls.some(c => c.id === h.classId)).length;
   let msg = `Delete tab "${tab.name}"?`;
   if (tabCls.length) msg += `\n\nThis will also delete ${tabCls.length} group(s) and ${hwCount} assignment(s).`;
@@ -860,16 +711,16 @@ async function handleDeleteTab(tabId) {
     state.tabs     = state.tabs.filter(t => t.id !== tabId);
     state.classes  = state.classes.filter(c => c.tabId !== tabId);
     state.homework = state.homework.filter(h => !clsIds.includes(h.classId));
-    if (state.activeTabId === tabId) {
-      state.activeTabId = state.tabs.length > 0 ? state.tabs[0].id : null;
-    }
+    if (state.activeTabId === tabId) state.activeTabId = 'classes';
+
     renderTabBar(); renderSchedule(); renderSummary();
     renderSettingsTabsList();
-    populateSettingsTabSelect(state.activeTabId); renderSettingsClassList();
+    populateSettingsTabSelect(state.activeTabId);
+    renderSettingsClassList();
     toast(`Deleted tab "${tab.name}"`, 'info');
 
     const { id: _id, createdAt: _ca, ...tabFields } = tab;
-    const clsSnapshots = tabCls.map(({ id: _i, tabId: _t, createdAt: _c, order: _o, ...f }) => f);
+    const clsSnapshots = tabCls.map(({ id: _i, tabId: _t, createdAt: _c, ...f }) => f);
 
     history.push({
       async undo() {
@@ -883,16 +734,14 @@ async function handleDeleteTab(tabId) {
         toast(`Restored tab "${tab.name}"`, 'success');
       },
       async redo() {
-        const r = state.tabs.find(t => t.name === tab.name);
+        const r = state.tabs.find(t => t.name === tab.name && t.id !== 'classes');
         if (!r) return;
         await api.tabs.remove(r.id);
         const rClsIds = state.classes.filter(c => c.tabId === r.id).map(c => c.id);
         state.tabs     = state.tabs.filter(t => t.id !== r.id);
         state.classes  = state.classes.filter(c => c.tabId !== r.id);
         state.homework = state.homework.filter(h => !rClsIds.includes(h.classId));
-        if (state.activeTabId === r.id) {
-          state.activeTabId = state.tabs.length > 0 ? state.tabs[0].id : null;
-        }
+        if (state.activeTabId === r.id) state.activeTabId = 'classes';
         renderTabBar(); renderSchedule(); renderSummary();
         renderSettingsTabsList(); populateSettingsTabSelect(state.activeTabId); renderSettingsClassList();
         toast(`Deleted tab "${tab.name}"`, 'info');
@@ -902,29 +751,36 @@ async function handleDeleteTab(tabId) {
 }
 
 async function handleMarkComplete(hwId) {
+  // Capture the hw BEFORE any state changes
   const hw = state.homework.find(h => h.id === hwId);
   if (!hw) return;
+
   try {
     const updated = await api.homework.update(hwId, { completed: true });
+    // Merge into state: spread existing fields so nothing is lost, then overlay server response
     const i = state.homework.findIndex(h => h.id === hwId);
     if (i !== -1) state.homework[i] = { ...state.homework[i], ...updated };
-    renderSchedule(); renderSummary();
+    renderSchedule();
+    renderSummary();
     toast(`Completed "${hw.description}"`, 'success');
 
     history.push({
+      // Capture description in closure for toast; undo reads fresh from state
       _desc: hw.description,
       async undo() {
         const upd = await api.homework.update(hwId, { completed: false });
         const j = state.homework.findIndex(h => h.id === hwId);
         if (j !== -1) state.homework[j] = { ...state.homework[j], ...upd, completed: false };
-        renderSchedule(); renderSummary();
+        renderSchedule();
+        renderSummary();
         toast(`Restored "${this._desc}"`, 'info');
       },
       async redo() {
         const upd = await api.homework.update(hwId, { completed: true });
         const j = state.homework.findIndex(h => h.id === hwId);
         if (j !== -1) state.homework[j] = { ...state.homework[j], ...upd, completed: true };
-        renderSchedule(); renderSummary();
+        renderSchedule();
+        renderSummary();
         toast(`Completed "${this._desc}"`, 'success');
       }
     });
@@ -939,7 +795,8 @@ async function handleDeleteHw(hwId) {
   try {
     await api.homework.remove(hwId);
     state.homework = state.homework.filter(h => h.id !== hwId);
-    renderSchedule(); renderSummary();
+    renderSchedule();
+    renderSummary();
     toast(`Deleted "${hw.description}"`, 'info');
 
     const { id: _id, createdAt: _ca, completed: _co, ...restoreFields } = hw;
@@ -980,9 +837,9 @@ async function handleDeleteClass(classId) {
     renderSettingsClassList(); renderSchedule(); renderSummary();
     toast(`Deleted group "${cls.name}"`, 'info');
 
-    const { id: _id, createdAt: _ca, order: _o, ...clsFields } = cls;
+    const { id: _id, createdAt: _ca, ...clsFields } = cls;
     const hwSnaps = clsHw.map(({ id: _i, classId: _c, createdAt: _c2, completed: _co, ...f }) => f);
-    const action  = {
+    const action = {
       restoredClassId: null,
       async undo() {
         const restored = await api.classes.create(clsFields);
@@ -1013,6 +870,7 @@ function wireEvents() {
   document.getElementById('add-hw-btn').addEventListener('click', () => openHwModal());
   document.getElementById('settings-btn').addEventListener('click', openSettings);
   document.getElementById('empty-settings-btn').addEventListener('click', openSettings);
+
   document.getElementById('undo-btn').addEventListener('click', () => history.undo());
   document.getElementById('redo-btn').addEventListener('click', () => history.redo());
 
@@ -1029,12 +887,11 @@ function wireEvents() {
   document.getElementById('close-group-form').addEventListener('click', closeGroupForm);
   document.getElementById('group-form-backdrop').addEventListener('click', closeGroupForm);
   document.getElementById('tab-form').addEventListener('submit', handleAddTab);
-
   document.getElementById('settings-tab-select').addEventListener('change', () => {
     renderSettingsClassList();
     updateSettingsLabels();
     if (!document.getElementById('edit-class-id').value) {
-      selectSwatch(getNextAvailableColor(document.getElementById('settings-tab-select').value || state.activeTabId));
+      selectSwatch(getNextAvailableColor(document.getElementById('settings-tab-select').value || 'classes'));
     }
   });
 
@@ -1048,7 +905,8 @@ function wireEvents() {
     if (deleteBtn) handleDeleteTab(deleteBtn.dataset.tabId);
     if (editBtn) {
       populateSettingsTabSelect(editBtn.dataset.tabId);
-      resetClassForm(); renderSettingsClassList();
+      resetClassForm();
+      renderSettingsClassList();
       switchSettingsPage('classes');
     }
   });
@@ -1056,26 +914,28 @@ function wireEvents() {
   document.getElementById('settings-classes-list').addEventListener('click', e => {
     const editBtn   = e.target.closest('.edit-class-btn');
     const deleteBtn = e.target.closest('.delete-class-btn');
-    if (editBtn)   { const cls = state.classes.find(c => c.id === editBtn.dataset.classId); if (cls) startEditClass(cls); }
+    if (editBtn)   { const cls = state.classes.find(c => c.id === editBtn.dataset.classId);   if (cls) startEditClass(cls); }
     if (deleteBtn) { handleDeleteClass(deleteBtn.dataset.classId); }
   });
 
+  // Main schedule — all delegated
   document.getElementById('classes-container').addEventListener('change', e => {
     const cb = e.target.closest('.hw-check');
     if (cb) handleMarkComplete(cb.dataset.hwId);
   });
   document.getElementById('classes-container').addEventListener('click', e => {
-    const editBtn = e.target.closest('.hw-edit-btn');
-    const delBtn  = e.target.closest('.hw-delete');
-    const addBtn  = e.target.closest('.class-add-hw-btn');
+    const editBtn  = e.target.closest('.hw-edit-btn');
+    const delBtn   = e.target.closest('.hw-delete');
+    const addBtn   = e.target.closest('.class-add-hw-btn');
     if (editBtn) openHwEditModal(editBtn.dataset.hwId);
     if (delBtn)  handleDeleteHw(delBtn.dataset.hwId);
     if (addBtn)  openHwModal(addBtn.dataset.classId);
   });
 
-  // Help modals
+  // Help section modals
   function openModal(id)  { document.getElementById(id).classList.add('modal--open'); }
   function closeModal(id) { document.getElementById(id).classList.remove('modal--open'); }
+
   document.getElementById('whats-new-btn').addEventListener('click',  () => openModal('whats-new-modal'));
   document.getElementById('privacy-btn').addEventListener('click',     () => openModal('privacy-modal'));
   document.getElementById('close-whats-new').addEventListener('click', () => closeModal('whats-new-modal'));
@@ -1083,6 +943,7 @@ function wireEvents() {
   document.getElementById('whats-new-backdrop').addEventListener('click', () => closeModal('whats-new-modal'));
   document.getElementById('privacy-backdrop').addEventListener('click',   () => closeModal('privacy-modal'));
 
+  // Keyboard shortcuts
   document.addEventListener('keydown', e => {
     const mod = e.metaKey || e.ctrlKey;
     if (mod && e.key==='z' && !e.shiftKey) { e.preventDefault(); history.undo(); return; }
@@ -1097,30 +958,74 @@ function wireEvents() {
 /* =============================================================================
    INIT
    ============================================================================= */
+let _appBooted = false;
 async function init() {
-  initColorSwatches();
-  wireEvents();
-
-  // Auth buttons
-  document.getElementById('google-signin-btn').addEventListener('click', handleGoogleSignIn);
-  document.getElementById('sign-out-btn').addEventListener('click', handleSignOut);
-  document.getElementById('migration-btn').addEventListener('click', migrateLocalData);
-
-  // Firebase auth state drives everything
-  auth.onAuthStateChanged(async user => {
-    if (user) {
-      currentUser = user;
-      const avatar = document.getElementById('user-avatar');
-      avatar.src   = user.photoURL || '';
-      avatar.title = user.displayName || user.email;
-      document.getElementById('user-name').textContent = user.displayName?.split(' ')[0] || '';
-      showApp();
-      await loadUserData();
-    } else {
-      currentUser = null;
-      showAuthScreen();
-    }
-  });
+  if (!_appBooted) {
+    _appBooted = true;
+    initColorSwatches();
+    wireEvents();
+  }
+  try {
+    const [tabs, classes, homework] = await Promise.all([
+      api.tabs.list(),
+      api.classes.list(),
+      api.homework.list()
+    ]);
+    state.tabs     = tabs;
+    state.classes  = classes;
+    state.homework = homework;
+    renderTabBar();
+    renderSchedule();
+    renderSummary();
+  } catch (err) {
+    toast(`Failed to load data: ${err.message}`, 'error');
+    console.error(err);
+  }
 }
 
-document.addEventListener('DOMContentLoaded', init);
+/* =============================================================================
+   AUTH GATE — wait for Firebase to restore session before doing anything
+   ============================================================================= */
+document.addEventListener('DOMContentLoaded', () => {
+  const authScreen  = document.getElementById('auth-screen');
+  const authLoading = document.getElementById('auth-loading');
+  const authCard    = document.getElementById('auth-card');
+  const appWrapper  = document.getElementById('app-wrapper');
+
+  // Sign-in button
+  document.getElementById('google-signin-btn').addEventListener('click', () => {
+    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(err => {
+      toast(`Sign-in failed: ${err.message}`, 'error');
+    });
+  });
+
+  // Sign-out button
+  document.getElementById('sign-out-btn').addEventListener('click', () => {
+    auth.signOut();
+  });
+
+  // Firebase resolves auth state from cache — this fires in ~100ms for returning users
+  auth.onAuthStateChanged(user => {
+    currentUser = user;
+    if (user) {
+      // Show app, hide auth screen
+      authScreen.classList.add('hidden');
+      appWrapper.classList.remove('hidden');
+
+      // Populate user info in header
+      const avatar = document.getElementById('user-avatar');
+      const name   = document.getElementById('user-name');
+      if (user.photoURL) { avatar.src = user.photoURL; avatar.alt = user.displayName || ''; }
+      if (user.displayName) name.textContent = user.displayName;
+
+      // Load data and boot app
+      init();
+    } else {
+      // Show sign-in card, hide spinner
+      appWrapper.classList.add('hidden');
+      authScreen.classList.remove('hidden');
+      authLoading.classList.add('hidden');
+      authCard.classList.remove('hidden');
+    }
+  });
+});
