@@ -34,7 +34,7 @@ npm start
 ## Project Structure
 
 ```
-HomeworkScheduler/
+StudyFlow/
 ├── server.js               # Express entry point
 ├── src/
 │   ├── routes/

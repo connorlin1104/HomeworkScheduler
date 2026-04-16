@@ -4,7 +4,7 @@
    FIREBASE AUTH — compat SDK (loaded via <script> tags)
    ============================================================================= */
 firebase.initializeApp({
-  apiKey:            'AIzaSyDkysaVPbRhebH6UWcrgwSCZKAiUWdUSKU',
+  apiKey:            'AIzaSyBV2tFMnRFtPiCsk1hscbWr6DmEhdV3NIw',
   authDomain:        'studyflow-38a6b.firebaseapp.com',
   projectId:         'studyflow-38a6b',
   storageBucket:     'studyflow-38a6b.firebasestorage.app',
@@ -1222,9 +1222,16 @@ document.addEventListener('DOMContentLoaded', () => {
   auth.onAuthStateChanged(user => {
     currentUser = user;
     if (user) {
+      // Close any lingering modals before showing the app
+      document.getElementById('settings-modal').classList.remove('modal--open');
+      document.getElementById('hw-modal').classList.remove('modal--open');
+
       // Show app, hide auth screen
       authScreen.classList.add('hidden');
       appWrapper.classList.remove('hidden');
+
+      // Re-apply prefs (theme/accent) every login — needed after logout clears data-theme
+      applyPrefs();
 
       // Show avatar in header
       const avatar = document.getElementById('user-avatar');
@@ -1233,6 +1240,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // Load data and boot app
       init();
     } else {
+      // Reset theme so auth screen is always light/readable
+      document.documentElement.removeAttribute('data-theme');
+
       // Show sign-in card, hide spinner
       appWrapper.classList.add('hidden');
       authScreen.classList.remove('hidden');
