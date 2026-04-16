@@ -2,3 +2,4 @@ node_modules/
 data/db.json
 .env
 *.log
+public/config.js

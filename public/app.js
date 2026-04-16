@@ -3,48 +3,104 @@
 /* =============================================================================
    FIREBASE AUTH — compat SDK (loaded via <script> tags)
    ============================================================================= */
-firebase.initializeApp({
-  apiKey:            'AIzaSyBV2tFMnRFtPiCsk1hscbWr6DmEhdV3NIw',
-  authDomain:        'studyflow-38a6b.firebaseapp.com',
-  projectId:         'studyflow-38a6b',
-  storageBucket:     'studyflow-38a6b.firebasestorage.app',
-  messagingSenderId: '1095751201974',
-  appId:             '1:1095751201974:web:47146e2ca008eeeeee6217'
-});
+firebase.initializeApp(window.FIREBASE_CONFIG);
 
 const auth = firebase.auth();
+const db   = firebase.firestore();
 let currentUser = null;
+
+// Firestore sentinel helpers
+const TS  = () => firebase.firestore.FieldValue.serverTimestamp();
+const DEL = () => firebase.firestore.FieldValue.delete();
+
+// Per-user collection/doc references — only call when currentUser is set
+const userCol = (col)     => db.collection('users').doc(currentUser.uid).collection(col);
+const userDoc = (col, id) => db.collection('users').doc(currentUser.uid).collection(col).doc(id);
 
 /* =============================================================================
    API LAYER
    ============================================================================= */
 const api = {
-  async _req(method, url, body) {
-    const opts = { method, headers: { 'Content-Type': 'application/json' } };
-    if (body !== undefined) opts.body = JSON.stringify(body);
-    const res  = await fetch(url, opts);
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-    return data;
-  },
   tabs: {
-    list:   ()       => api._req('GET',    '/api/tabs'),
-    create: (body)   => api._req('POST',   '/api/tabs', body),
-    update: (id, b)  => api._req('PUT',    `/api/tabs/${id}`, b),
-    remove: (id)     => api._req('DELETE', `/api/tabs/${id}`)
+    async list() {
+      const snap = await userCol('tabs').get();
+      const tabs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      tabs.sort((a, b) => {
+        const ts = v => v?.seconds ?? (v ? new Date(v).getTime() / 1000 : 0);
+        return ts(a.createdAt) - ts(b.createdAt);
+      });
+      return tabs;
+    },
+    async create(body) {
+      const ref = await userCol('tabs').add({ ...body, createdAt: TS() });
+      return { id: ref.id, ...body };
+    },
+    async update(id, body) {
+      await userDoc('tabs', id).update(body);
+      return { id, ...body };
+    },
+    async remove(id) {
+      const clsInTab = state.classes.filter(c => c.tabId === id);
+      const clsIds   = new Set(clsInTab.map(c => c.id));
+      const hwInTab  = state.homework.filter(h => clsIds.has(h.classId));
+      const batch    = db.batch();
+      batch.delete(userDoc('tabs', id));
+      clsInTab.forEach(c => batch.delete(userDoc('classes',  c.id)));
+      hwInTab.forEach( h => batch.delete(userDoc('homework', h.id)));
+      await batch.commit();
+      return { ok: true };
+    }
   },
   classes: {
-    list:    ()       => api._req('GET',    '/api/classes'),
-    create:  (body)   => api._req('POST',   '/api/classes', body),
-    update:  (id, b)  => api._req('PUT',    `/api/classes/${id}`, b),
-    remove:  (id)     => api._req('DELETE', `/api/classes/${id}`),
-    reorder: (order)  => api._req('POST',   '/api/classes/reorder', { order })
+    async list() {
+      const snap    = await userCol('classes').get();
+      const classes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      classes.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      return classes;
+    },
+    async create(body) {
+      const order = Date.now();
+      const ref   = await userCol('classes').add({ ...body, order, createdAt: TS() });
+      return { id: ref.id, ...body, order };
+    },
+    async update(id, body) {
+      await userDoc('classes', id).update(body);
+      const snap = await userDoc('classes', id).get();
+      return { id: snap.id, ...snap.data() };
+    },
+    async remove(id) {
+      const hwToDelete = state.homework.filter(h => h.classId === id);
+      const batch      = db.batch();
+      batch.delete(userDoc('classes', id));
+      hwToDelete.forEach(h => batch.delete(userDoc('homework', h.id)));
+      await batch.commit();
+      return { ok: true };
+    },
+    async reorder(orderedIds) {
+      const batch = db.batch();
+      orderedIds.forEach((id, index) => batch.update(userDoc('classes', id), { order: index }));
+      await batch.commit();
+      return { ok: true };
+    }
   },
   homework: {
-    list:   ()       => api._req('GET',    '/api/homework'),
-    create: (body)   => api._req('POST',   '/api/homework', body),
-    update: (id, b)  => api._req('PUT',    `/api/homework/${id}`, b),
-    remove: (id)     => api._req('DELETE', `/api/homework/${id}`)
+    async list() {
+      const snap = await userCol('homework').get();
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    },
+    async create(body) {
+      const ref = await userCol('homework').add({ ...body, completed: false, createdAt: TS() });
+      return { id: ref.id, ...body, completed: false };
+    },
+    async update(id, body) {
+      await userDoc('homework', id).update(body);
+      const snap = await userDoc('homework', id).get();
+      return { id: snap.id, ...snap.data() };
+    },
+    async remove(id) {
+      await userDoc('homework', id).delete();
+      return { ok: true };
+    }
   }
 };
 
@@ -735,17 +791,27 @@ async function handleAddHomework(e) {
 
 async function handleClassFormSubmit(e) {
   e.preventDefault();
-  const id    = document.getElementById('edit-class-id').value;
-  const tabId = document.getElementById('settings-tab-select').value || 'classes';
-  const data  = {
+  const id      = document.getElementById('edit-class-id').value;
+  const tabId   = document.getElementById('settings-tab-select').value || state.activeTabId;
+  const teacher = document.getElementById('class-teacher').value.trim();
+  const room    = document.getElementById('class-room').value.trim();
+  const period  = normalizePeriod(document.getElementById('class-period').value) || '';
+  const data    = {
     tabId,
-    name:    document.getElementById('class-name').value.trim(),
-    color:   document.getElementById('class-color').value,
-    teacher: document.getElementById('class-teacher').value.trim() || undefined,
-    room:    document.getElementById('class-room').value.trim()    || undefined,
-    period:  normalizePeriod(document.getElementById('class-period').value) || undefined
+    name:  document.getElementById('class-name').value.trim(),
+    color: document.getElementById('class-color').value,
   };
   if (!data.name) return;
+
+  if (id) {
+    data.teacher = teacher || DEL();
+    data.room    = room    || DEL();
+    data.period  = period  || DEL();
+  } else {
+    if (teacher) data.teacher = teacher;
+    if (room)    data.room    = room;
+    if (period)  data.period  = period;
+  }
 
   try {
     if (id) {
@@ -1183,6 +1249,13 @@ async function init() {
     wireEvents();
     applyPrefs();
   }
+  document.getElementById('classes-container').innerHTML = `
+    <div class="data-loading">
+      <div class="spinner"></div>
+      <p>Loading your data…</p>
+    </div>`;
+  document.getElementById('empty-state').classList.add('hidden');
+
   try {
     const [tabs, classes, homework] = await Promise.all([
       api.tabs.list(),
@@ -1192,12 +1265,21 @@ async function init() {
     state.tabs     = tabs;
     state.classes  = classes;
     state.homework = homework;
+    if (!state.activeTabId || !tabs.find(t => t.id === state.activeTabId)) {
+      state.activeTabId = tabs[0]?.id ?? null;
+    }
     renderTabBar();
     renderSchedule();
     renderSummary();
   } catch (err) {
     toast(`Failed to load data: ${err.message}`, 'error');
     console.error(err);
+    document.getElementById('classes-container').innerHTML = `
+      <div style="padding:32px;text-align:center;color:#ef4444;">
+        <strong>Could not load your data.</strong><br>
+        <span style="font-size:0.85rem;color:#64748b;">${err.message}</span><br><br>
+        <button class="btn btn-secondary" onclick="location.reload()">Retry</button>
+      </div>`;
   }
 }
 
