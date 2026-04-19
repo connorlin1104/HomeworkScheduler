@@ -4,3 +4,6 @@ data/db.json
 .env
 *.log
 public/config.js
+serviceAccountKey.json
+.firebase/
+public/fstest.html
