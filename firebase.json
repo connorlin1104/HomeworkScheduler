@@ -20,8 +20,12 @@
     ],
     "headers": [
       {
-        "source": "**/*.@(js|css|html)",
+        "source": "**/*.@(js|css|html|svg|ico|png)",
         "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      },
+      {
+        "source": "favicon.ico",
+        "headers": [{ "key": "Content-Type", "value": "image/x-icon" }]
       }
     ]
   }

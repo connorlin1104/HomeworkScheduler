@@ -2,7 +2,7 @@
 
 /* =============================================================================
    FIREBASE AUTH — compat SDK (loaded via <script> tags)
-   jkl1
+   jkl2
    ============================================================================= */
 firebase.initializeApp(window.FIREBASE_CONFIG);
 

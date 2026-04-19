@@ -4,7 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StudyFlow — Homework Scheduler</title>
-  <link rel="stylesheet" href="style.css">
+  <!-- Favicon & app icons -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1e293b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="StudyFlow">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
@@ -73,10 +85,12 @@
       <div class="tab-content">
         <div id="classes-container"></div>
         <div id="empty-state" class="empty-state hidden">
-          <div class="empty-icon">&#x1F4DA;</div>
-          <h2>No Tabs yet</h2>
-          <p>Open Settings to Add Tabs</p>
-          <button class="btn btn-primary" id="empty-settings-btn">Open Settings</button>
+          <div class="empty-state-body">
+            <div class="empty-icon">&#x1F4DA;</div>
+            <h2>No Tabs yet</h2>
+            <p>Open Settings to Add Tabs</p>
+            <button class="btn btn-primary" id="empty-settings-btn">Open Settings</button>
+          </div>
           <p id="empty-template-hint" class="empty-template-hint hidden">Not sure where to start? <button class="btn-link" id="empty-template-btn">Browse templates</button></p>
         </div>
       </div>
@@ -507,6 +521,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="config.js"></script>
-  <script src="app.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
