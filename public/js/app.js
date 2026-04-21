@@ -621,6 +621,7 @@ function openHwModal(preselectedClassId = null) {
   document.getElementById('hw-edit-id').value = '';
   document.getElementById('hw-modal-title').textContent = 'New Assignment';
   document.getElementById('hw-form-submit').textContent = 'Add to Schedule';
+  document.getElementById('hw-reminder-group').classList.add('hidden');
 
   // Build grouped <optgroup> select
   const select = document.getElementById('hw-class');
@@ -664,6 +665,11 @@ function openHwEditModal(hwId) {
     document.getElementById('hw-minute').value = '';
     document.getElementById('hw-ampm').value   = 'AM';
   }
+  // Populate reminder dropdown and show group if deadline is set
+  const reminderSel = document.getElementById('hw-reminder');
+  reminderSel.value = hw.remindBefore != null ? String(hw.remindBefore) : '';
+  document.getElementById('hw-reminder-group').classList.toggle('hidden', !hw.deadline);
+
   document.getElementById('hw-modal-title').textContent   = 'Edit Assignment';
   document.getElementById('hw-form-submit').textContent   = 'Save Changes';
 }
@@ -726,8 +732,11 @@ function renderPrefsPage() {
     sw.classList.toggle('accent-swatch--active', sw.dataset.accent === prefs.get('accent', '#3b82f6'));
   });
   // Sync toggles
-  document.getElementById('pref-compact').checked  = prefs.get('compact', false);
-  document.getElementById('pref-summary').checked  = prefs.get('showSummary', true);
+  document.getElementById('pref-compact').checked       = prefs.get('compact', false);
+  document.getElementById('pref-summary').checked       = prefs.get('showSummary', true);
+  document.getElementById('pref-notifications').checked = prefs.get('notificationsEnabled', false);
+  document.getElementById('pref-notify-before').value   = String(prefs.get('notifyBefore', 60));
+  document.getElementById('pref-notify-before-row').classList.toggle('hidden', !prefs.get('notificationsEnabled', false));
 }
 
 function initAccentSwatches() {
@@ -825,11 +834,15 @@ async function handleAddHomework(e) {
     deadlineTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   }
 
+  const reminderVal = document.getElementById('hw-reminder').value;
+  const remindBefore = deadline && reminderVal !== '' ? parseInt(reminderVal) : null;
+
   const payload = {
     classId, description,
     ...(notes        && { notes }),
     ...(deadline     && { deadline }),
-    ...(deadlineTime && { deadlineTime })
+    ...(deadlineTime && { deadlineTime }),
+    ...(remindBefore != null && { remindBefore })
   };
 
   try {
@@ -1268,6 +1281,79 @@ function applyPersonalTemplate() {
 }
 
 /* =============================================================================
+   PUSH NOTIFICATIONS
+   ============================================================================= */
+const VAPID_PUBLIC_KEY = 'BFWfEiPtIsRDCL_qvHssn-xtFm5uAW5yJfthe30xWLsJE8POzFJLeSQlV5dvnpQu1ipikKKVH2P0_arXSaOP7nM';
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw     = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    await navigator.serviceWorker.register('/sw.js');
+  } catch (e) { console.warn('SW registration failed:', e); }
+}
+
+async function subscribeToNotifications() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    toast('Push notifications are not supported in this browser.', 'warning');
+    prefs.set('notificationsEnabled', false);
+    document.getElementById('pref-notifications').checked = false;
+    return;
+  }
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') {
+    toast('Notification permission denied.', 'warning');
+    prefs.set('notificationsEnabled', false);
+    document.getElementById('pref-notifications').checked = false;
+    renderPrefsPage();
+    return;
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly:      true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+    const notifyBefore = prefs.get('notifyBefore', 60);
+    await apiFetch('POST', '/api/notifications/subscribe', {
+      subscription:  sub.toJSON(),
+      notifyBefore
+    });
+    prefs.set('notificationsEnabled', true);
+    prefs.set('pushEndpoint', sub.endpoint);
+    renderPrefsPage();
+    toast('Notifications enabled', 'success');
+  } catch (e) {
+    toast(`Could not enable notifications: ${e.message}`, 'error');
+    prefs.set('notificationsEnabled', false);
+    document.getElementById('pref-notifications').checked = false;
+    renderPrefsPage();
+  }
+}
+
+async function unsubscribeFromNotifications() {
+  try {
+    const endpoint = prefs.get('pushEndpoint', null);
+    if (endpoint) {
+      await apiFetch('DELETE', '/api/notifications/subscribe', { endpoint });
+    }
+    const reg = await navigator.serviceWorker?.ready;
+    const sub = await reg?.pushManager?.getSubscription();
+    if (sub) await sub.unsubscribe();
+    prefs.set('notificationsEnabled', false);
+    prefs.set('pushEndpoint', null);
+    renderPrefsPage();
+    toast('Notifications disabled', 'success');
+  } catch (e) { toast(`Error disabling notifications: ${e.message}`, 'error'); }
+}
+
+/* =============================================================================
    WIRE EVENTS
    ============================================================================= */
 function buildTimePickerOptions() {
@@ -1339,6 +1425,25 @@ function wireEvents() {
   document.getElementById('pref-summary').addEventListener('change', e => {
     prefs.set('showSummary', e.target.checked);
     applyPrefs();
+  });
+  document.getElementById('pref-notifications').addEventListener('change', e => {
+    if (e.target.checked) subscribeToNotifications();
+    else unsubscribeFromNotifications();
+  });
+  document.getElementById('pref-notify-before').addEventListener('change', async e => {
+    const val = parseInt(e.target.value);
+    prefs.set('notifyBefore', val);
+    const endpoint = prefs.get('pushEndpoint', null);
+    if (endpoint) {
+      try { await apiFetch('PUT', '/api/notifications/subscribe', { endpoint, notifyBefore: val }); }
+      catch (_) {}
+    }
+  });
+
+  // Show/hide reminder group when deadline is set/cleared
+  document.getElementById('hw-deadline').addEventListener('change', e => {
+    document.getElementById('hw-reminder-group').classList.toggle('hidden', !e.target.value);
+    if (!e.target.value) document.getElementById('hw-reminder').value = '';
   });
 
   // Schedule transfer
@@ -1461,6 +1566,7 @@ async function init() {
     initAccentSwatches();
     wireEvents();
     applyPrefs();
+    registerServiceWorker();
   }
   document.getElementById('classes-container').innerHTML = `
     <div class="data-loading">

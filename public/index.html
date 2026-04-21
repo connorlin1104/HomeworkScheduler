@@ -193,6 +193,18 @@
             </div>
           </div>
         </div>
+        <div class="form-group hidden" id="hw-reminder-group">
+          <label for="hw-reminder">Reminder <span class="optional">(optional)</span></label>
+          <select id="hw-reminder">
+            <option value="">Use default</option>
+            <option value="0">At deadline</option>
+            <option value="30">30 minutes before</option>
+            <option value="60">1 hour before</option>
+            <option value="120">2 hours before</option>
+            <option value="1440">1 day before</option>
+            <option value="-1">No reminder</option>
+          </select>
+        </div>
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" id="cancel-hw">Cancel</button>
           <button type="submit" class="btn btn-primary" id="hw-form-submit">Add to Schedule</button>
@@ -303,6 +315,32 @@
                 </label>
               </div>
             </div>
+            <div class="settings-section">
+              <h3 class="settings-section-label">Notifications</h3>
+              <div class="pref-row">
+                <div class="pref-info">
+                  <span class="pref-label">Push notifications</span>
+                  <span class="pref-desc">Remind you before items are due</span>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="pref-notifications">
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+              <div class="pref-row" id="pref-notify-before-row">
+                <div class="pref-info">
+                  <span class="pref-label">Default reminder</span>
+                  <span class="pref-desc">How far in advance to notify</span>
+                </div>
+                <select id="pref-notify-before" class="pref-select">
+                  <option value="30">30 minutes before</option>
+                  <option value="60" selected>1 hour before</option>
+                  <option value="120">2 hours before</option>
+                  <option value="1440">1 day before</option>
+                  <option value="0">At deadline</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <!-- PAGE: Managing Tabs -->
@@ -365,7 +403,7 @@
           <!-- PAGE: Templates -->
           <div id="settings-page-templates" class="settings-page hidden">
             <div class="settings-section">
-              <p class="settings-empty" style="margin-bottom:12px;">Applying a template adds new tabs and groups — your existing schedule is kept.</p>
+              <p class="settings-empty" style="margin-bottom:12px;">Apply a Template — your existing schedule is kept.</p>
               <div class="help-list">
                 <button class="help-item" id="student-template-btn">
                   <span class="help-item-icon">&#x1F393;</span>
