@@ -1184,23 +1184,9 @@ async function loadSchedule(file) {
    TEMPLATES
    ============================================================================= */
 async function applyTemplate(btnId, templateName, tabs) {
-  const hasData = state.tabs.length > 0 || state.classes.length > 0;
-  if (hasData && !confirm(
-    `This will replace your current schedule with the ${templateName} template.\n\n` +
-    'All existing tabs, groups, and assignments will be deleted. Continue?'
-  )) return;
-
   const btn = document.getElementById(btnId);
   btn.disabled = true;
   try {
-    const [freshTabs, freshClasses, freshHomework] = await Promise.all([
-      api.tabs.list(), api.classes.list(), api.homework.list()
-    ]);
-    for (const h of freshHomework) await api.homework.remove(h.id);
-    for (const c of freshClasses)  await api.classes.remove(c.id);
-    for (const t of freshTabs)     await api.tabs.remove(t.id);
-    state.tabs = []; state.classes = []; state.homework = [];
-
     let firstTabId = null;
     for (const tabDef of tabs) {
       const tab = await api.tabs.create({ name: tabDef.name });
