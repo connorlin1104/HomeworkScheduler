@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StudyFlow — Homework Scheduler</title>
+  <title>StudyFlow — Scheduler</title>
   <!-- Favicon & app icons -->
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
@@ -43,7 +43,7 @@
     <!-- Shown when user is not signed in -->
     <div id="auth-card" class="auth-card hidden">
       <div class="auth-logo">📚 StudyFlow</div>
-      <p class="auth-tagline">Your personal homework scheduler</p>
+      <p class="auth-tagline">Your personal scheduler</p>
 
       <!-- Sign in / Sign up panel -->
       <div id="auth-panel-main">
@@ -99,7 +99,7 @@
   <header class="site-header">
     <h1 class="logo">StudyFlow</h1>
     <div class="header-actions">
-      <button class="btn btn-primary" id="add-hw-btn">+ Add Homework</button>
+      <button class="btn btn-primary" id="add-hw-btn">+ Add Item</button>
       <div class="undo-redo-group">
         <button class="btn-icon-header" id="undo-btn" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↩</button>
         <button class="btn-icon-header" id="redo-btn" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>↪</button>
@@ -472,6 +472,15 @@
       </div>
       <div class="release-notes">
         <div class="release-block">
+          <h3 class="release-version">v1.7 &mdash; April 2026</h3>
+          <ul>
+            <li>Email &amp; password sign-in added alongside Google sign-in</li>
+            <li>Email verification required after sign-up with email/password</li>
+            <li>Forgot password &mdash; dedicated panel with resend support</li>
+            <li>Renamed &ldquo;Homework Scheduler&rdquo; to &ldquo;Scheduler&rdquo; throughout the app for broader use</li>
+          </ul>
+        </div>
+        <div class="release-block">
           <h3 class="release-version">v1.6 &mdash; April 2026</h3>
           <ul>
             <li>Deadline time &mdash; optionally add a time (hour, minute, AM/PM) to any assignment; shown in the deadline badge</li>
@@ -560,7 +569,7 @@
         <button class="close-btn" id="close-privacy" aria-label="Close">&times;</button>
       </div>
       <div class="privacy-content">
-        <p class="privacy-lead">StudyFlow is a personal homework scheduler built for students.</p>
+        <p class="privacy-lead">StudyFlow is a personal scheduler built for students.</p>
         <h3>Your Data</h3>
         <p>Everything you enter &mdash; tabs, classes, assignments, deadlines &mdash; is stored in <strong>Google Firestore</strong> under your account. Only you can read or write your own data; Firestore security rules block all cross-user access.</p>
         <h3>Sign-in</h3>

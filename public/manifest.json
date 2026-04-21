@@ -1,7 +1,7 @@
 {
-  "name": "StudyFlow — Homework Scheduler",
+  "name": "StudyFlow — Scheduler",
   "short_name": "StudyFlow",
-  "description": "Track homework and stay on top of your schedule.",
+  "description": "Track assignments and stay on top of your schedule.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1e293b",
