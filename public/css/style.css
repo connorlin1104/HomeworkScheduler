@@ -82,6 +82,9 @@ body {
   font-size: .875rem;
   font-weight: 500;
   font-family: inherit;
+  line-height: 1;
+  -webkit-appearance: none;
+  appearance: none;
   cursor: pointer;
   transition: background var(--t), transform var(--t);
   white-space: nowrap;
@@ -231,12 +234,12 @@ body {
   align-items: center;
   justify-content: center;
   cursor: col-resize;
-  background: var(--surface);
+  background: var(--bg);
   border-right: 1px solid var(--border);
   transition: background var(--t);
   user-select: none;
 }
-.summary-drag-handle:hover { background: var(--bg); }
+.summary-drag-handle:hover { background: color-mix(in srgb, var(--bg) 60%, var(--border)); }
 
 .summary-drag-chevron {
   font-size: .85rem;
@@ -708,6 +711,7 @@ textarea { min-height: 68px; resize: vertical; }
 
 .deadline-row { display: flex; gap: 8px; align-items: center; }
 #hw-deadline { flex: 1; min-width: 0; padding: 11px 12px; font-size: 1rem; cursor: pointer; box-sizing: border-box; height: 47px; }
+#hw-deadline::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 1; }
 .time-picker { display: flex; gap: 2px; }
 .time-picker input,
 .time-picker select { padding: 0 8px; font-size: 1rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-family: inherit; cursor: pointer; box-sizing: border-box; height: 47px; }
@@ -1050,6 +1054,44 @@ kbd {
 .toast--error   { background: #7f1d1d; color: #fff; }
 .toast--warning { background: #78350f; color: #fff; }
 .toast--info    { background: var(--header-bg); color: #fff; }
+
+/* =============================================================================
+   CONFIRM DIALOG
+   ============================================================================= */
+.confirm-box {
+  max-width: 360px;
+  padding: 32px 28px 24px;
+  text-align: center;
+}
+
+.confirm-icon {
+  font-size: 2.4rem;
+  line-height: 1;
+  margin-bottom: 14px;
+}
+
+.confirm-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+  line-height: 1.35;
+}
+
+.confirm-message {
+  font-size: .85rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin-bottom: 0;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 22px;
+}
+.confirm-actions .btn { min-width: 88px; }
 
 /* =============================================================================
    AUTH SCREEN
@@ -1494,7 +1536,7 @@ kbd {
   padding: 4px 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--card-bg);
+  background: var(--surface);
   color: var(--text);
   cursor: pointer;
   flex-shrink: 0;

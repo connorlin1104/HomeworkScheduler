@@ -53,9 +53,9 @@ router.put('/:id', async (req, res) => {
     const update = {};
     if (name    !== undefined) update.name    = name;
     if (color   !== undefined) update.color   = color;
-    if (teacher !== undefined) update.teacher = teacher;
-    if (room    !== undefined) update.room    = room;
-    if (period  !== undefined) update.period  = period;
+    if (teacher !== undefined) update.teacher = teacher || FieldValue.delete();
+    if (room    !== undefined) update.room    = room    || FieldValue.delete();
+    if (period  !== undefined) update.period  = period  || FieldValue.delete();
     await ref.update(update);
     const snap = await ref.get();
     res.json({ id: snap.id, ...snap.data() });

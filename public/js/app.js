@@ -242,6 +242,55 @@ function toast(message, type='info') {
 }
 
 /* =============================================================================
+   CUSTOM CONFIRM DIALOG
+   ============================================================================= */
+function showConfirm({ title, message = '', confirmText = 'Delete', confirmClass = 'btn-danger', icon = '🗑️' }) {
+  return new Promise(resolve => {
+    const dialog     = document.getElementById('confirm-dialog');
+    const titleEl    = document.getElementById('confirm-title');
+    const messageEl  = document.getElementById('confirm-message');
+    const iconEl     = document.getElementById('confirm-icon');
+    const okBtn      = document.getElementById('confirm-ok');
+    const cancelBtn  = document.getElementById('confirm-cancel');
+    const backdrop   = document.getElementById('confirm-backdrop');
+
+    titleEl.textContent   = title;
+    iconEl.textContent    = icon;
+    okBtn.textContent     = confirmText;
+    okBtn.className       = `btn ${confirmClass}`;
+
+    if (message) {
+      messageEl.textContent = message;
+      messageEl.classList.remove('hidden');
+    } else {
+      messageEl.classList.add('hidden');
+    }
+
+    dialog.classList.add('modal--open');
+    cancelBtn.focus();
+
+    function cleanup(result) {
+      dialog.classList.remove('modal--open');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      backdrop.removeEventListener('click', onCancel);
+      document.removeEventListener('keydown', onKey);
+      resolve(result);
+    }
+    function onOk()     { cleanup(true);  }
+    function onCancel() { cleanup(false); }
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); cleanup(false); }
+    }
+
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    backdrop.addEventListener('click', onCancel);
+    document.addEventListener('keydown', onKey);
+  });
+}
+
+/* =============================================================================
    RENDER — TAB BAR
    ============================================================================= */
 function renderTabBar() {
@@ -888,9 +937,9 @@ async function handleClassFormSubmit(e) {
   if (!data.name) return;
 
   if (id) {
-    data.teacher = teacher || DEL();
-    data.room    = room    || DEL();
-    data.period  = period  || DEL();
+    data.teacher = teacher;
+    data.room    = room;
+    data.period  = period;
   } else {
     if (teacher) data.teacher = teacher;
     if (room)    data.room    = room;
@@ -942,9 +991,10 @@ async function handleDeleteTab(tabId) {
   if (!tab) return;
   const tabCls = state.classes.filter(c => c.tabId === tabId);
   const hwCount = state.homework.filter(h => tabCls.some(c => c.id === h.classId)).length;
-  let msg = `Delete tab "${tab.name}"?`;
-  if (tabCls.length) msg += `\n\nThis will also delete ${tabCls.length} group(s) and ${hwCount} assignment(s).`;
-  if (!confirm(msg)) return;
+  const subMsg = tabCls.length
+    ? `This will also delete ${tabCls.length} group${tabCls.length !== 1 ? 's' : ''} and ${hwCount} assignment${hwCount !== 1 ? 's' : ''}.`
+    : '';
+  if (!await showConfirm({ title: `Delete "${tab.name}"?`, message: subMsg, confirmText: 'Delete Tab', icon: '🗑️' })) return;
 
   try {
     await api.tabs.remove(tabId);
@@ -1031,7 +1081,7 @@ async function handleMarkComplete(hwId) {
 async function handleDeleteHw(hwId) {
   const hw = state.homework.find(h => h.id === hwId);
   if (!hw) return;
-  if (!confirm(`Delete "${hw.description}"?`)) return;
+  if (!await showConfirm({ title: `Delete "${hw.description}"?`, confirmText: 'Delete', icon: '🗑️' })) return;
 
   try {
     await api.homework.remove(hwId);
@@ -1066,10 +1116,10 @@ async function handleDeleteClass(classId) {
   const cls   = state.classes.find(c => c.id === classId);
   if (!cls) return;
   const clsHw = state.homework.filter(h => h.classId === classId);
-  const msg   = clsHw.length
-    ? `Delete "${cls.name}" and its ${clsHw.length} assignment(s)?`
-    : `Delete "${cls.name}"?`;
-  if (!confirm(msg)) return;
+  const clsSubMsg = clsHw.length
+    ? `This will also delete ${clsHw.length} assignment${clsHw.length !== 1 ? 's' : ''}.`
+    : '';
+  if (!await showConfirm({ title: `Delete "${cls.name}"?`, message: clsSubMsg, confirmText: 'Delete Group', icon: '🗑️' })) return;
 
   try {
     await api.classes.remove(classId);
@@ -1144,7 +1194,7 @@ async function loadSchedule(file) {
     toast('Invalid schedule file', 'error');
     return;
   }
-  if (!confirm('This will replace your current schedule. Continue?')) return;
+  if (!await showConfirm({ title: 'Replace current schedule?', message: 'This will delete all your existing tabs, groups, and assignments.', confirmText: 'Replace', icon: '⚠️' })) return;
 
   try {
     // Delete all existing data

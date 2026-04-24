@@ -650,6 +650,20 @@
   <!-- Toast notifications -->
   <div id="toast-container" aria-live="polite"></div>
 
+  <!-- Custom confirm dialog -->
+  <div id="confirm-dialog" class="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="modal-backdrop" id="confirm-backdrop"></div>
+    <div class="modal-box confirm-box">
+      <div class="confirm-icon" id="confirm-icon" aria-hidden="true"></div>
+      <h2 class="confirm-title" id="confirm-title"></h2>
+      <p class="confirm-message hidden" id="confirm-message"></p>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
+        <button class="btn btn-danger"    id="confirm-ok">Delete</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase Auth only (no Firestore — data stays on the local server) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
