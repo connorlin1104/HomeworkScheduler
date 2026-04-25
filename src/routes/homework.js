@@ -46,7 +46,10 @@ router.put('/:id', async (req, res) => {
     if (notes        !== undefined) update.notes        = notes;
     if (deadline     !== undefined) update.deadline     = deadline;
     if (deadlineTime !== undefined) update.deadlineTime = deadlineTime;
-    if (completed    !== undefined) update.completed    = completed;
+    if (completed    !== undefined) {
+      update.completed   = completed;
+      update.completedAt = completed ? FieldValue.serverTimestamp() : null;
+    }
     if (remindBefore !== undefined) update.remindBefore = remindBefore;
     if ((deadline !== undefined && deadline !== existing.deadline) ||
         (deadlineTime !== undefined && deadlineTime !== existing.deadlineTime)) {

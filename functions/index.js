@@ -107,5 +107,15 @@ exports.scheduledNotifications = onSchedule(
         }
       }
     }
+
+    // Delete completed homework items older than 30 days
+    try {
+      const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const oldSnap = await db.collectionGroup('homework')
+        .where('completed', '==', true)
+        .where('completedAt', '<=', cutoff)
+        .get();
+      await Promise.all(oldSnap.docs.map(d => d.ref.delete()));
+    } catch (_) {}
   }
 );

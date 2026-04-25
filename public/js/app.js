@@ -794,7 +794,9 @@ function renderPrefsPage() {
   document.getElementById('pref-summary').checked       = prefs.get('showSummary', true);
   document.getElementById('pref-notifications').checked = prefs.get('notificationsEnabled', false);
   document.getElementById('pref-notify-before').value   = String(prefs.get('notifyBefore', 60));
-  document.getElementById('pref-notify-before-row').classList.toggle('hidden', !prefs.get('notificationsEnabled', false));
+  const notifOn = prefs.get('notificationsEnabled', false);
+  document.getElementById('pref-notify-before-row').classList.toggle('hidden', !notifOn);
+  document.getElementById('pref-notify-test-row').classList.toggle('hidden', !notifOn);
 }
 
 function initAccentSwatches() {
@@ -1553,6 +1555,20 @@ function wireEvents() {
     if (endpoint) {
       try { await apiFetch('PUT', '/api/notifications/subscribe', { endpoint, notifyBefore: val }); }
       catch (_) {}
+    }
+  });
+  document.getElementById('pref-notify-test-btn').addEventListener('click', async e => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    try {
+      const { count } = await apiFetch('POST', '/api/notifications/test', {});
+      toast(count > 0 ? `Test sent for ${count} item${count > 1 ? 's' : ''}` : 'No upcoming items to notify about', count > 0 ? 'success' : 'warning');
+    } catch (err) {
+      toast(`Test failed: ${err.message}`, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Send Test';
     }
   });
 
