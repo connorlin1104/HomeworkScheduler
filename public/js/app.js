@@ -1669,51 +1669,13 @@ function wireEvents() {
     if (!isOpen) item.classList.add('open');
   });
 
-  // Contact modal
-  const contactModal    = document.getElementById('contact-modal');
-  const contactForm     = document.getElementById('contact-form');
-  const contactStatus   = document.getElementById('contact-status');
-  function openContactModal() {
-    contactForm.reset();
-    contactStatus.style.display = 'none';
-    contactModal.classList.add('modal--open');
-  }
-  function closeContactModal() { contactModal.classList.remove('modal--open'); }
-  document.getElementById('contact-btn').addEventListener('click',    openContactModal);
-  document.getElementById('contact-close').addEventListener('click',  closeContactModal);
-  document.getElementById('contact-cancel').addEventListener('click', closeContactModal);
-  document.getElementById('contact-backdrop').addEventListener('click', closeContactModal);
-  contactForm.addEventListener('submit', async e => {
-    e.preventDefault();
-    const subject = document.getElementById('contact-subject').value;
-    const message = document.getElementById('contact-message').value.trim();
-    if (!message) return;
-    const btn = document.getElementById('contact-submit');
-    btn.disabled = true;
-    btn.textContent = 'Sending…';
-    contactStatus.style.display = 'none';
-    try {
-      await apiFetch('POST', '/api/support', { subject, message });
-      contactStatus.style.cssText = 'display:block; color: var(--success, #22c55e); font-size:.875rem;';
-      contactStatus.textContent = 'Message sent — we\'ll get back to you soon.';
-      contactForm.querySelector('textarea').value = '';
-      btn.textContent = 'Send Message';
-      btn.disabled = false;
-    } catch (err) {
-      contactStatus.style.cssText = 'display:block; color: #ef4444; font-size:.875rem;';
-      contactStatus.textContent = `Failed to send: ${err.message}`;
-      btn.textContent = 'Send Message';
-      btn.disabled = false;
-    }
-  });
-
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
     const mod = e.metaKey || e.ctrlKey;
     if (mod && e.key==='z' && !e.shiftKey) { e.preventDefault(); history.undo(); return; }
     if (mod && (e.key==='y' || (e.key==='z' && e.shiftKey))) { e.preventDefault(); history.redo(); return; }
     if (e.key==='Escape') {
-      closeHwModal(); closeSettings(); closeGroupForm(); closeContactModal();
+      closeHwModal(); closeSettings(); closeGroupForm();
       closeModal('whats-new-modal'); closeModal('privacy-modal');
     }
   });

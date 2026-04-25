@@ -1120,13 +1120,6 @@ kbd {
 .faq-item.open .faq-answer { display: block; }
 
 /* =============================================================================
-   CONTACT MODAL
-   ============================================================================= */
-.contact-box { max-width: 460px; padding: 28px; }
-.contact-box textarea { resize: vertical; min-height: 100px; }
-.modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
-
-/* =============================================================================
    AUTH SCREEN
    ============================================================================= */
 .auth-screen {
