@@ -1,5 +1,5 @@
 'use strict';
-
+// v2
 const { onRequest }  = require('firebase-functions/v2/https');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
