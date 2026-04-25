@@ -76,9 +76,13 @@ router.post('/test', async (req, res) => {
     for (const doc of subsSnap.docs) {
       const sub = doc.data();
       try {
-        await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payload);
+        await Promise.race([
+          webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payload),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('push timeout')), 8000))
+        ]);
       } catch (e) {
         if (e.statusCode === 410) await doc.ref.delete();
+        else throw e;
       }
     }
     res.json({ ok: true });
