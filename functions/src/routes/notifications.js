@@ -82,7 +82,7 @@ router.post('/test', async (req, res) => {
         ]);
       } catch (e) {
         if (e.statusCode === 410) await doc.ref.delete();
-        else throw e;
+        else throw new Error(`Push failed (${e.statusCode ?? 'no status'}): ${e.body ?? e.message}`);
       }
     }
     res.json({ ok: true });
