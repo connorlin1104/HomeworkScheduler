@@ -1344,7 +1344,7 @@ function applyPersonalTemplate() {
 /* =============================================================================
    PUSH NOTIFICATIONS
    ============================================================================= */
-const VAPID_PUBLIC_KEY = 'BFWfEiPtIsRDCL_qvHssn-xtFm5uAW5yJfthe30xWLsJE8POzFJLeSQlV5dvnpQu1ipikKKVH2P0_arXSaOP7nM';
+const VAPID_PUBLIC_KEY = 'BJJSDaGraTbTmvzXnZUIz7m-L_Zut6FK0hIX8b5MXeRmhv0rHtrvpknNdjcs-TRDyZR52h8yrM9UpOjdNJsNEYU';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
