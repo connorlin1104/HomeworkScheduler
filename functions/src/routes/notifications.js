@@ -72,6 +72,7 @@ router.post('/test', async (req, res) => {
     const subsSnap = await col().where('uid', '==', req.uid).get();
     if (subsSnap.empty) return res.status(400).json({ error: 'No subscription found. Enable notifications first.' });
 
+    const pubKeyInUse = toUrlSafe(process.env.VAPID_PUBLIC_KEY).slice(0, 12);
     const payload = JSON.stringify({ title: 'StudyFlow', body: 'Notifications are working!', url: '/' });
     for (const doc of subsSnap.docs) {
       const sub = doc.data();
@@ -82,7 +83,7 @@ router.post('/test', async (req, res) => {
         ]);
       } catch (e) {
         if (e.statusCode === 410) await doc.ref.delete();
-        else throw new Error(`Push failed (${e.statusCode ?? 'no status'}): ${e.body ?? e.message}`);
+        else throw new Error(`Push failed (${e.statusCode ?? 'no status'}): ${e.body ?? e.message} [pub:${pubKeyInUse}] [ep:${sub.endpoint.slice(-20)}]`);
       }
     }
     res.json({ ok: true });
