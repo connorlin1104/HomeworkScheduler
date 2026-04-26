@@ -65,8 +65,15 @@ router.post('/test', async (req, res) => {
       toUrlSafe(process.env.VAPID_PRIVATE_KEY)
     );
 
+    const rawPub  = process.env.VAPID_PUBLIC_KEY  ?? '';
+    const rawPriv = process.env.VAPID_PRIVATE_KEY ?? '';
+    const debug = {
+      pubLen: rawPub.length, pubStart: rawPub.slice(0,6), pubEnd: rawPub.slice(-6),
+      privLen: rawPriv.length, privStart: rawPriv.slice(0,6), privEnd: rawPriv.slice(-6),
+    };
+
     const subsSnap = await col().where('uid', '==', req.uid).get();
-    if (subsSnap.empty) return res.status(400).json({ error: 'No subscription found. Enable notifications first.' });
+    if (subsSnap.empty) return res.status(400).json({ error: 'No subscription found. Enable notifications first.', debug });
 
     const payload = JSON.stringify({ title: 'StudyFlow', body: 'Notifications are working!', url: '/' });
     let sent = 0;
@@ -84,8 +91,8 @@ router.post('/test', async (req, res) => {
         lastErr = e;
       }
     }
-    if (sent === 0) return res.status(500).json({ error: `Push failed: ${lastErr?.body ?? lastErr?.message ?? 'unknown'}` });
-    res.json({ ok: true });
+    if (sent === 0) return res.status(500).json({ error: `Push failed: ${lastErr?.body ?? lastErr?.message ?? 'unknown'}`, debug });
+    res.json({ ok: true, debug });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
