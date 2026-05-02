@@ -45,8 +45,13 @@ router.put('/subscribe', async (req, res) => {
 });
 
 router.delete('/subscribe', async (req, res) => {
+  const { endpoint } = req.body;
+  if (!endpoint) return res.status(400).json({ error: 'endpoint required' });
   try {
-    const snap = await col().where('uid', '==', req.uid).get();
+    const snap = await col()
+      .where('uid', '==', req.uid)
+      .where('endpoint', '==', endpoint)
+      .limit(1).get();
     await Promise.all(snap.docs.map(d => d.ref.delete()));
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
