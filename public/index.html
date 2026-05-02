@@ -3,14 +3,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>StudyFlow — Scheduler</title>
   <!-- Favicon & app icons -->
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
-  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1e293b">
   <meta name="mobile-web-app-capable" content="yes">
@@ -149,6 +149,7 @@
     <aside class="summary-panel">
       <div class="summary-drag-handle" id="summary-drag-handle">
         <span class="summary-drag-chevron" id="summary-drag-chevron">‹</span>
+        <span class="summary-drag-pill"></span>
       </div>
       <div class="summary-drag-content">
       <div class="summary-header">
@@ -595,6 +596,16 @@
         <button class="close-btn" id="close-whats-new" aria-label="Close">&times;</button>
       </div>
       <div class="release-notes">
+        <div class="release-block">
+          <h3 class="release-version">v1.10 &mdash; May 2026</h3>
+          <ul>
+            <li>Mobile summary panel is now a <strong>draggable bottom sheet</strong> &mdash; drag the pill handle to snap between collapsed, normal, and full-screen</li>
+            <li>Desktop summary panel shows the same <strong>accent-colored pill</strong> drag indicator instead of a text arrow</li>
+            <li>PWA status bar no longer overlaps the header on iPhone &mdash; fixed with iOS safe-area insets</li>
+            <li>Assignments with no time set now <strong>notify at midnight</strong> (12:00 AM) of the due date, so reminders fire the evening before</li>
+            <li>iOS Safari now shows an &ldquo;Add to Home Screen&rdquo; prompt when notifications aren&rsquo;t available in the browser</li>
+          </ul>
+        </div>
         <div class="release-block">
           <h3 class="release-version">v1.9 &mdash; April 2026</h3>
           <ul>

@@ -8,7 +8,7 @@ const API_URL  = 'https://api-5em2zrdv2a-uc.a.run.app';
 
 function computeRemindAt(deadline, deadlineTime, remindMins, deadlineMs) {
   const base = deadlineMs ?? (() => {
-    const timeStr = deadlineTime || '23:59';
+    const timeStr = deadlineTime || '00:00';
     const [hh, mm] = timeStr.split(':').map(Number);
     const [y, mo, d] = deadline.split('-').map(Number);
     return new Date(Date.UTC(y, mo - 1, d, hh, mm)).getTime();

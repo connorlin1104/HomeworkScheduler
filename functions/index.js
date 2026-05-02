@@ -51,7 +51,7 @@ app.post('/internal/notify', async (req, res) => {
 
     const now = Date.now();
     const deadlineMs = item.deadlineMs ?? (() => {
-      const [hh, mm] = (item.deadlineTime || '23:59').split(':').map(Number);
+      const [hh, mm] = (item.deadlineTime || '00:00').split(':').map(Number);
       const [y, mo, d] = item.deadline.split('-').map(Number);
       return new Date(Date.UTC(y, mo - 1, d, hh, mm)).getTime();
     })();

@@ -901,7 +901,7 @@ async function handleAddHomework(e) {
 
   let deadlineMs = null;
   if (deadline) {
-    const timeStr = deadlineTime || '23:59';
+    const timeStr = deadlineTime || '00:00';
     deadlineMs = new Date(`${deadline}T${timeStr}:00`).getTime();
   }
 
@@ -1385,7 +1385,13 @@ async function registerServiceWorker() {
 
 async function subscribeToNotifications() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    toast('Push notifications are not supported in this browser.', 'warning');
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isStandalone = navigator.standalone === true;
+    if (isIOS && !isStandalone) {
+      toast('Tap the share icon → "Add to Home Screen", then open the app from your home screen to enable notifications.', 'warning');
+    } else {
+      toast('Push notifications are not supported in this browser.', 'warning');
+    }
     prefs.set('notificationsEnabled', false);
     document.getElementById('pref-notifications').checked = false;
     return;
@@ -1516,55 +1522,129 @@ function wireEvents() {
 
   // Summary panel drag-to-collapse
   (function() {
-    const handle   = document.getElementById('summary-drag-handle');
-    const panel    = document.querySelector('.summary-panel');
-    const appBody  = document.querySelector('.app-body');
+    const handle  = document.getElementById('summary-drag-handle');
+    const panel   = document.querySelector('.summary-panel');
+    const appBody = document.querySelector('.app-body');
     if (!handle || !panel || !appBody) return;
 
-    const EXPANDED  = 340;
-    const COLLAPSED = 16;
-    const SNAP      = 120;
+    function isMobile() { return window.innerWidth <= 820; }
 
+    // ── Desktop drag (horizontal) ──────────────────────────────────────────────
+    const D_EXPANDED = 340, D_COLLAPSED = 16, D_SNAP = 120;
     let dragging = false, startX = 0, startW = 0;
 
     handle.addEventListener('mousedown', e => {
-      dragging = true;
-      startX   = e.clientX;
-      startW   = panel.offsetWidth;
-      document.body.style.cursor    = 'col-resize';
+      if (isMobile()) return;
+      dragging = true; startX = e.clientX; startW = panel.offsetWidth;
+      document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
       e.preventDefault();
     });
-
     document.addEventListener('mousemove', e => {
-      if (!dragging) return;
-      const w = Math.max(COLLAPSED, Math.min(EXPANDED, startW - (e.clientX - startX)));
+      if (!dragging || isMobile()) return;
+      const w = Math.max(D_COLLAPSED, Math.min(D_EXPANDED, startW - (e.clientX - startX)));
       appBody.style.gridTemplateColumns = `1fr ${w}px`;
     });
-
     document.addEventListener('mouseup', () => {
       if (!dragging) return;
       dragging = false;
-      document.body.style.cursor     = '';
-      document.body.style.userSelect = '';
-      const w       = panel.offsetWidth;
-      const collapse = w < SNAP;
+      document.body.style.cursor = ''; document.body.style.userSelect = '';
+      const collapse = panel.offsetWidth < D_SNAP;
       appBody.style.gridTemplateColumns = '';
-      setSummaryCollapsed(collapse);
+      setDesktopCollapsed(collapse);
     });
-
     handle.addEventListener('click', e => {
-      if (Math.abs(e.clientX - startX) > 4) return; // was a drag, not click
-      setSummaryCollapsed(!panel.classList.contains('summary-panel--collapsed'));
+      if (isMobile() || Math.abs(e.clientX - startX) > 4) return;
+      setDesktopCollapsed(!panel.classList.contains('summary-panel--collapsed'));
     });
-
-    function setSummaryCollapsed(collapse) {
+    function setDesktopCollapsed(collapse) {
       panel.classList.toggle('summary-panel--collapsed', collapse);
       const chev = document.getElementById('summary-drag-chevron');
       if (chev) chev.textContent = collapse ? '›' : '‹';
       prefs.set('showSummary', !collapse);
-      const toggle = document.getElementById('pref-summary');
-      if (toggle) toggle.checked = !collapse;
+      const tog = document.getElementById('pref-summary');
+      if (tog) tog.checked = !collapse;
+    }
+    // Init desktop chevron
+    const initChev = document.getElementById('summary-drag-chevron');
+    if (initChev) initChev.textContent = panel.classList.contains('summary-panel--collapsed') ? '›' : '‹';
+
+    // ── Mobile drag (vertical, 3-snap bottom sheet) ────────────────────────────
+    const M_COLLAPSED = 36;
+    const M_NORMAL    = 240;
+    const M_EXPANDED  = () => Math.round(window.innerHeight * 0.86);
+
+    let mobileSnap = 'normal'; // 'collapsed' | 'normal' | 'expanded'
+    let touching = false, touchStartY = 0, touchStartH = 0, touchStartTime = 0;
+
+    function getCurrentMobileH() {
+      const rows = appBody.style.gridTemplateRows;
+      if (rows) { const m = rows.match(/(\d+(?:\.\d+)?)px/); if (m) return parseFloat(m[1]); }
+      return mobileSnap === 'collapsed' ? M_COLLAPSED
+           : mobileSnap === 'expanded'  ? M_EXPANDED()
+           : M_NORMAL;
+    }
+
+    function snapMobileTo(snap, animate) {
+      const h = snap === 'expanded' ? M_EXPANDED() : snap === 'normal' ? M_NORMAL : M_COLLAPSED;
+      if (animate) {
+        appBody.style.transition = 'grid-template-rows 230ms cubic-bezier(.4,0,.2,1)';
+        setTimeout(() => { appBody.style.transition = ''; }, 240);
+      }
+      appBody.style.gridTemplateRows = `1fr ${h}px`;
+      panel.classList.toggle('summary-panel--collapsed', snap === 'collapsed');
+      mobileSnap = snap;
+      prefs.set('mobileSummarySnap', snap);
+      prefs.set('showSummary', snap !== 'collapsed');
+      const tog = document.getElementById('pref-summary');
+      if (tog) tog.checked = snap !== 'collapsed';
+    }
+
+    function nearestSnap(h) {
+      const exp = M_EXPANDED();
+      const dC = Math.abs(h - M_COLLAPSED), dN = Math.abs(h - M_NORMAL), dE = Math.abs(h - exp);
+      const min = Math.min(dC, dN, dE);
+      return min === dC ? 'collapsed' : min === dN ? 'normal' : 'expanded';
+    }
+
+    handle.addEventListener('touchstart', e => {
+      if (!isMobile()) return;
+      touching = true;
+      touchStartY = e.touches[0].clientY;
+      touchStartH = getCurrentMobileH();
+      touchStartTime = Date.now();
+      appBody.style.transition = '';
+      e.preventDefault();
+    }, { passive: false });
+
+    document.addEventListener('touchmove', e => {
+      if (!touching) return;
+      const dy = touchStartY - e.touches[0].clientY;
+      const h  = Math.max(M_COLLAPSED - 10, Math.min(M_EXPANDED() + 30, touchStartH + dy));
+      appBody.style.gridTemplateRows = `1fr ${h}px`;
+      panel.classList.toggle('summary-panel--collapsed', h < M_COLLAPSED + 16);
+    }, { passive: true });
+
+    document.addEventListener('touchend', e => {
+      if (!touching) return;
+      touching = false;
+      const isTap = Date.now() - touchStartTime < 260
+                 && Math.abs(touchStartY - (e.changedTouches[0]?.clientY ?? touchStartY)) < 12;
+      if (isTap) {
+        const next = mobileSnap === 'collapsed' ? 'normal'
+                   : mobileSnap === 'expanded'  ? 'normal'
+                   : 'collapsed';
+        snapMobileTo(next, true);
+      } else {
+        snapMobileTo(nearestSnap(getCurrentMobileH()), true);
+      }
+    });
+
+    // Init mobile snap state
+    if (isMobile()) {
+      const saved = prefs.get('mobileSummarySnap', prefs.get('showSummary', true) ? 'normal' : 'collapsed');
+      mobileSnap = saved;
+      snapMobileTo(saved, false);
     }
   })();
   document.getElementById('pref-notifications').addEventListener('change', e => {
