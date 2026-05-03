@@ -58,7 +58,7 @@ body {
   font-weight: 700;
   letter-spacing: -.03em;
   flex: 1;
-  color: var(--header-text);
+  color: var(--primary);
 }
 
 .header-actions {
