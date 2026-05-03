@@ -416,7 +416,27 @@ body {
   gap: 12px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--color, #94a3b8) 9%, white);
+  cursor: pointer;
+  user-select: none;
 }
+
+.class-toggle-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: .9rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1;
+  transition: color var(--t);
+  pointer-events: none;
+}
+.class-header:hover .class-toggle-btn { color: var(--text); }
+
+.class-row--collapsed .class-header { border-bottom: none; }
+.class-row--collapsed .hw-list { display: none; }
 
 .class-meta { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .class-name-text    { font-size: 1rem; font-weight: 700; }
@@ -456,6 +476,7 @@ body {
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
+  min-height: 56px;
   border-bottom: 1px solid var(--border);
   transition: background var(--t);
 }
@@ -464,6 +485,32 @@ body {
 
 .hw-item--done { opacity: .65; background: #f8fafc; }
 .hw-item--done .hw-desc { text-decoration: line-through; color: var(--text-muted); }
+
+/* Collapsible hw-items */
+.hw-item--collapsible { cursor: pointer; align-items: flex-start; }
+.hw-item--collapsible .hw-check-label { padding-top: 2px; }
+.hw-item--collapsible .hw-right { padding-top: 1px; }
+.hw-item--collapsible .hw-desc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hw-item--collapsible .hw-notes { display: none; }
+
+.hw-expand-hint {
+  font-size: .7rem;
+  color: var(--text-muted);
+  letter-spacing: .02em;
+  margin-top: 1px;
+}
+
+/* Expanded state */
+.hw-item--expanded .hw-desc {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+.hw-item--expanded .hw-notes { display: block; }
 
 /* Custom checkbox (uses the class color) */
 .hw-check-label {
@@ -1318,6 +1365,7 @@ kbd {
   background: color-mix(in srgb, var(--color, #94a3b8) 14%, #1e293b);
 }
 [data-theme="dark"] .hw-item:hover      { background: #263348; }
+[data-theme="dark"] .hw-item--expanded  { background: #1e293b; }
 [data-theme="dark"] .btn-icon-sm.hw-edit-btn:hover { background: #1e3052; }
 [data-theme="dark"] .badge--pending { background: #451a03; color: #fdba74; }
 [data-theme="dark"] .badge--done    { background: #052e16; color: #86efac; }
@@ -1691,7 +1739,8 @@ html.pwa-mode body {
   .logo { font-size: 1.1rem; }
   .tab-content { padding: 12px 12px 40px; }
   .form-row { flex-direction: column; }
-  .hw-right { flex-direction: column; align-items: flex-end; gap: 4px; }
+  .hw-right { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+  .hw-item .btn-icon-sm { opacity: 1; }
   .modal-box--wide { max-width: 100%; }
   .settings-layout { flex-direction: column; }
   .settings-sidebar { width: 100%; flex-direction: row; border-right: none; border-bottom: 1px solid var(--border); flex-wrap: wrap; }

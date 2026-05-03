@@ -367,8 +367,11 @@ function renderSchedule() {
 }
 
 function buildClassRow(cls, pendingHw) {
+  const collapsedIds = prefs.get('collapsedTopics', []);
+  const startCollapsed = Array.isArray(collapsedIds) && collapsedIds.includes(cls.id);
+
   const row = document.createElement('div');
-  row.className = 'class-row';
+  row.className = `class-row${startCollapsed ? ' class-row--collapsed' : ''}`;
   row.dataset.classId = cls.id;
   row.style.setProperty('--color', cls.color || '#94a3b8');
 
@@ -379,6 +382,7 @@ function buildClassRow(cls, pendingHw) {
 
   row.innerHTML = `
     <div class="class-header">
+      <button class="class-toggle-btn" aria-label="Toggle topic" aria-expanded="${!startCollapsed}">${startCollapsed ? '▸' : '▾'}</button>
       <div class="class-meta">
         <span class="class-name-text">${esc(cls.name)}</span>
         ${details ? `<span class="class-details-text">${esc(details)}</span>` : ''}
@@ -402,14 +406,16 @@ function buildClassRow(cls, pendingHw) {
 
 function buildHwItem(hw) {
   const item = document.createElement('div');
-  item.className = 'hw-item';
+  const isExpandable = !!(hw.notes || hw.description.length > 50);
+  item.className = `hw-item${isExpandable ? ' hw-item--collapsible' : ''}`;
   item.dataset.hwId = hw.id;
 
   const dl     = parseDeadline(hw.deadline, hw.deadlineTime);
   const dlHtml = dl
     ? `<span class="deadline-badge ${dl.cssClass}">${esc(dl.label)}</span>`
     : '';
-  const notesHtml = hw.notes ? `<span class="hw-notes">${esc(hw.notes)}</span>` : '';
+  const notesHtml  = hw.notes ? `<span class="hw-notes">${esc(hw.notes)}</span>` : '';
+  const hintHtml   = isExpandable ? `<span class="hw-expand-hint" aria-hidden="true">▾ more</span>` : '';
 
   item.innerHTML = `
     <label class="hw-check-label" title="Mark complete">
@@ -418,6 +424,7 @@ function buildHwItem(hw) {
     </label>
     <div class="hw-body">
       <span class="hw-desc">${esc(hw.description)}</span>
+      ${hintHtml}
       ${notesHtml}
     </div>
     <div class="hw-right">
@@ -682,6 +689,7 @@ function openHwModal(preselectedClassId = null) {
     return;
   }
   document.getElementById('hw-form').reset();
+  document.getElementById('hw-reminder').value = '';
   document.getElementById('hw-edit-id').value = '';
   document.getElementById('hw-modal-title').textContent = 'New Assignment';
   document.getElementById('hw-form-submit').textContent = 'Add to Schedule';
@@ -731,7 +739,7 @@ function openHwEditModal(hwId) {
   }
   // Populate reminder dropdown and show group if deadline is set
   const reminderSel = document.getElementById('hw-reminder');
-  reminderSel.value = hw.remindBefore != null ? String(hw.remindBefore) : '';
+  reminderSel.value = (hw.remindBefore != null && hw.remindBefore !== 0) ? String(hw.remindBefore) : '';
   document.getElementById('hw-reminder-group').classList.toggle('hidden', !hw.deadline);
 
   document.getElementById('hw-modal-title').textContent   = 'Edit Assignment';
@@ -917,7 +925,8 @@ async function handleAddHomework(e) {
     ...(deadline     && { deadline }),
     ...(deadlineTime && { deadlineTime }),
     ...(deadlineMs  != null && { deadlineMs }),
-    ...(remindBefore != null && { remindBefore })
+    // In edit mode always include remindBefore (even null) so server can clear legacy 0 values
+    ...(editId ? { remindBefore } : remindBefore != null ? { remindBefore } : {})
   };
 
   try {
@@ -1764,9 +1773,36 @@ function wireEvents() {
     const editBtn  = e.target.closest('.hw-edit-btn');
     const delBtn   = e.target.closest('.hw-delete');
     const addBtn   = e.target.closest('.class-add-hw-btn');
-    if (editBtn) openHwEditModal(editBtn.dataset.hwId);
-    if (delBtn)  handleDeleteHw(delBtn.dataset.hwId);
-    if (addBtn)  openHwModal(addBtn.dataset.classId);
+    if (editBtn) { openHwEditModal(editBtn.dataset.hwId); return; }
+    if (delBtn)  { handleDeleteHw(delBtn.dataset.hwId);   return; }
+    if (addBtn)  { openHwModal(addBtn.dataset.classId);   return; }
+
+    // Toggle topic collapse (click anywhere on header except + Add)
+    const header = e.target.closest('.class-header');
+    if (header) {
+      const row = header.closest('.class-row');
+      const collapsed = row.classList.toggle('class-row--collapsed');
+      const toggleBtn = header.querySelector('.class-toggle-btn');
+      if (toggleBtn) {
+        toggleBtn.textContent = collapsed ? '▸' : '▾';
+        toggleBtn.setAttribute('aria-expanded', String(!collapsed));
+      }
+      // Persist collapsed state
+      const classId = row.dataset.classId;
+      const ids = Array.isArray(prefs.get('collapsedTopics', [])) ? prefs.get('collapsedTopics', []) : [];
+      if (collapsed) { if (!ids.includes(classId)) ids.push(classId); }
+      else           { const i = ids.indexOf(classId); if (i !== -1) ids.splice(i, 1); }
+      prefs.set('collapsedTopics', ids);
+      return;
+    }
+
+    // Toggle hw-item expand/collapse (click anywhere on item except interactive controls)
+    const hwItem = e.target.closest('.hw-item--collapsible');
+    if (hwItem && !e.target.closest('.hw-check-label') && !e.target.closest('.hw-edit-btn') && !e.target.closest('.hw-delete')) {
+      const expanded = hwItem.classList.toggle('hw-item--expanded');
+      const hint = hwItem.querySelector('.hw-expand-hint');
+      if (hint) hint.textContent = expanded ? '▴ less' : '▾ more';
+    }
   });
 
   // Summary panel — edit and complete buttons
